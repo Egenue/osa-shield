@@ -91,7 +91,7 @@ export default function CommunityPage() {
                   )}
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    {new Date(report.timestamp).toRelativeTimeString?.() || new Date(report.timestamp).toLocaleString()}
+                    {new Date(report.timestamp).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-foreground/90 mb-2 line-clamp-2">{report.content}</p>
