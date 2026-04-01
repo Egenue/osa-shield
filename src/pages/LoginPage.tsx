@@ -19,8 +19,9 @@ export default function LoginPage() {
       await login(email, password);
       toast.success('Welcome back, Agent.');
       navigate('/dashboard');
-    } catch {
-      toast.error('Authentication failed.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Authentication failed.';
+      toast.error(message);
     }
   };
 

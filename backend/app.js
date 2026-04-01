@@ -1,34 +1,103 @@
 import Fastify from "fastify";
 import dotenv from "dotenv";
+import cookie from "@fastify/cookie";
+import session from "@fastify/session";
 import routes from "./routes/routes.js";
 import sequelize from "./config/db.js";
+import {
+  isDatabaseReady,
+  markDatabaseConnected,
+  markDatabaseDisconnected,
+} from "./services/databaseStateService.js";
 
-dotenv.config()
+dotenv.config();
 
-const port = process.env.PORT
+const port = Number(process.env.PORT || 9200);
+const dbRetryIntervalMs = Number(process.env.DB_RETRY_INTERVAL_MS || 15000);
+const requireDbAtStartup =
+  process.env.DB_REQUIRED_AT_STARTUP === "true" || process.env.NODE_ENV === "production";
 
 const fastify = Fastify({
-    logger: true
+  logger: true,
 });
 
-fastify.register(routes, {prefix: "/"});
+const rawSessionSecret =
+  process.env.SESSION_SECRET || "osa-shield-dev-session-secret-change-me-123456";
+const sessionSecret =
+  rawSessionSecret.length >= 32 ? rawSessionSecret : rawSessionSecret.padEnd(32, "_");
 
-const start = async () =>{
-    try {
+fastify.register(cookie);
+fastify.register(session, {
+  secret: sessionSecret,
+  cookieName: "sessionId",
+  saveUninitialized: false,
+  cookie: {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
+});
 
-        await sequelize.authenticate();
-        console.log(`Database connected successfully`);
+fastify.register(routes, { prefix: "/" });
 
-       await fastify.listen(
-            {
-                port: port,
-                host: '0.0.0.0'
-            }
-        );
-    } catch (error) {
-        fastify.log.error(error);
-        process.exit(1)
+let isConnectingToDatabase = false;
+let databaseSchemaSynced = false;
+
+async function initializeDatabase() {
+  if (isConnectingToDatabase || isDatabaseReady()) {
+    return isDatabaseReady();
+  }
+
+  isConnectingToDatabase = true;
+
+  try {
+    await sequelize.authenticate();
+
+    if (!databaseSchemaSynced) {
+      await sequelize.sync();
+      databaseSchemaSynced = true;
     }
+
+    markDatabaseConnected();
+    fastify.log.info("Database connected successfully");
+    return true;
+  } catch (error) {
+    markDatabaseDisconnected(error);
+    fastify.log.error({ err: error }, "Database connection failed");
+    return false;
+  } finally {
+    isConnectingToDatabase = false;
+  }
 }
 
-start()
+const start = async () => {
+  try {
+    const connected = await initializeDatabase();
+
+    if (!connected && requireDbAtStartup) {
+      process.exit(1);
+    }
+
+    await fastify.listen({
+      port,
+      host: "0.0.0.0",
+    });
+
+    if (!connected) {
+      fastify.log.warn(
+        "Starting without database connectivity. DB-backed routes will return 503 until the connection succeeds."
+      );
+
+      setInterval(() => {
+        void initializeDatabase();
+      }, dbRetryIntervalMs);
+    }
+  } catch (error) {
+    fastify.log.error(error);
+    process.exit(1);
+  }
+};
+
+start();

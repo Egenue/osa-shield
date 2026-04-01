@@ -1,28 +1,63 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Send, MapPin, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 
 const scamTypes = ['Email', 'URL', 'SMS', 'Phone Call'];
 
 export default function ReportPage() {
+  const navigate = useNavigate();
+  const { user, checkSession } = useAuthStore();
   const [type, setType] = useState('');
   const [content, setContent] = useState('');
   const [location, setLocation] = useState('');
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!location && user?.location) {
+      setLocation(user.location);
+    }
+  }, [location, user?.location]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!type || !content) { toast.error('Please fill in required fields.'); return; }
+    if (!type || !content) {
+      toast.error('Please fill in required fields.');
+      return;
+    }
+
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    toast.success('Report submitted successfully. Thank you, Agent.');
-    setType(''); setContent(''); setLocation('');
-    setSubmitting(false);
+
+    try {
+      await apiFetch<{ message: string }>('/scams/report', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          content,
+          location,
+          anonymous,
+        }),
+      });
+
+      await checkSession();
+      toast.success('Report submitted successfully.');
+      setType('');
+      setContent('');
+      setLocation(user?.location ?? '');
+      setAnonymous(false);
+      navigate('/community');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not submit the report.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -77,6 +112,11 @@ export default function ReportPage() {
                 className="pl-10 bg-secondary/50 border-border/50"
               />
             </div>
+            {user?.location && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Current session location: {user.location}
+              </p>
+            )}
           </div>
 
           <button

@@ -1,16 +1,41 @@
-import { Shield, Activity, FileText, Edit, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { Shield, Activity, FileText, User, MapPin } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-
-const mockHistory = [
-  { id: 1, type: 'scan', label: 'Analyzed phishing URL', date: '2 hours ago', result: 'High Risk' },
-  { id: 2, type: 'report', label: 'Reported SMS scam', date: '1 day ago', result: 'Verified' },
-  { id: 3, type: 'scan', label: 'Analyzed email content', date: '3 days ago', result: 'Low Risk' },
-  { id: 4, type: 'report', label: 'Reported phone scam', date: '1 week ago', result: 'Pending' },
-];
+import { apiFetch, type ProfileActivity } from '@/lib/api';
+import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
+  const [history, setHistory] = useState<ProfileActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadActivity = async () => {
+      try {
+        const data = await apiFetch<{ activities: ProfileActivity[] }>('/profile/activity');
+        if (!ignore) {
+          setHistory(data.activities);
+        }
+      } catch (error) {
+        if (!ignore) {
+          toast.error(error instanceof Error ? error.message : 'Could not load activity history.');
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadActivity();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -23,10 +48,13 @@ export default function ProfilePage() {
           <div>
             <h1 className="font-display text-2xl font-bold">{user?.name || 'Agent'}</h1>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
+            {user?.location && (
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" />
+                {user.location}
+              </p>
+            )}
           </div>
-          <Button variant="cyber-outline" size="sm" className="ml-auto">
-            <Edit className="h-4 w-4" /> Edit
-          </Button>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
@@ -48,7 +76,19 @@ export default function ProfilePage() {
       <div className="glass rounded-2xl p-6">
         <h2 className="font-display text-xl font-bold mb-4">Activity History</h2>
         <div className="space-y-3">
-          {mockHistory.map((item) => (
+          {isLoading && (
+            <div className="p-3 rounded-lg bg-secondary/30 text-sm text-muted-foreground">
+              Loading recent activity...
+            </div>
+          )}
+
+          {!isLoading && history.length === 0 && (
+            <div className="p-3 rounded-lg bg-secondary/30 text-sm text-muted-foreground">
+              Your scan and report history will appear here once you start using the platform.
+            </div>
+          )}
+
+          {history.map((item) => (
             <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
               <div className="flex items-center gap-3">
                 {item.type === 'scan' ? (
@@ -58,16 +98,21 @@ export default function ProfilePage() {
                 )}
                 <div>
                   <div className="text-sm font-medium">{item.label}</div>
-                  <div className="text-xs text-muted-foreground">{item.date}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                  </div>
+                  {item.details && (
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.details}</div>
+                  )}
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded ${
-                item.result === 'High Risk' ? 'bg-destructive/10 text-destructive' :
-                item.result === 'Verified' ? 'bg-success/10 text-success' :
-                item.result === 'Low Risk' ? 'bg-primary/10 text-primary' :
+                item.status === 'High Risk' ? 'bg-destructive/10 text-destructive' :
+                item.status === 'Verified' ? 'bg-success/10 text-success' :
+                item.status === 'Low Risk' ? 'bg-primary/10 text-primary' :
                 'bg-warning/10 text-warning'
               }`}>
-                {item.result}
+                {item.status}
               </span>
             </div>
           ))}

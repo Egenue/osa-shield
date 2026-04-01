@@ -1,52 +1,99 @@
 import { useState } from 'react';
-import { Activity, Shield, FileText, Zap, AlertTriangle, CheckCircle, Link as LinkIcon, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  Shield,
+  FileText,
+  Zap,
+  AlertTriangle,
+  CheckCircle,
+  Link as LinkIcon,
+  MessageSquare,
+  MapPin,
+  ShieldAlert,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { apiFetch, type ScamAnalysisResponse } from '@/lib/api';
 
-const mockTriggers = [
-  { label: 'Urgency language detected', severity: 'high' },
-  { label: 'Suspicious URL pattern', severity: 'high' },
-  { label: 'Known phishing domain', severity: 'critical' },
-  { label: 'Impersonation attempt', severity: 'medium' },
-];
+function scoreColor(score: number) {
+  if (score >= 75) return 'text-destructive';
+  if (score >= 40) return 'text-warning';
+  return 'text-success';
+}
 
-const mockRecommendations = [
-  'Do not click any links in this message.',
-  'Report this sender to your email provider.',
-  'Verify sender identity through official channels.',
-];
+function buildRecommendations(result: ScamAnalysisResponse, tab: 'text' | 'url') {
+  if (result.is_scam) {
+    return [
+      tab === 'url'
+        ? 'Do not open the link or enter any information on the site.'
+        : 'Do not click any links or reply to the sender.',
+      'Do not share passwords, verification codes, card details, or personal documents.',
+      result.stored_in_community
+        ? 'This sample has been saved to the community feed for other users to review.'
+        : 'Report the content so other users can see it.',
+    ];
+  }
+
+  return [
+    'No strong scam signals were detected, but you should still verify the sender through trusted channels.',
+    tab === 'url'
+      ? 'Open the link only if you trust the source and the domain is correct.'
+      : 'Treat unexpected requests for money, login details, or urgency with caution.',
+    'If the situation still feels suspicious, file a manual report for the community to review.',
+  ];
+}
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, checkSession } = useAuthStore();
   const { activeAnalyzerTab, setActiveAnalyzerTab } = useUIStore();
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<null | { score: number }>(null);
+  const [result, setResult] = useState<ScamAnalysisResponse | null>(null);
+  const [lastAnalyzedTab, setLastAnalyzedTab] = useState<'text' | 'url'>('text');
 
   const handleAnalyze = async () => {
     if (!input.trim()) return;
+
     setIsAnalyzing(true);
     setResult(null);
-    await new Promise(r => setTimeout(r, 2000));
-    setResult({ score: Math.floor(Math.random() * 60) + 40 });
-    setIsAnalyzing(false);
+    setLastAnalyzedTab(activeAnalyzerTab);
+    try {
+      const analysis = await apiFetch<ScamAnalysisResponse>('/scams/analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          inputType: activeAnalyzerTab,
+          content: input.trim(),
+        }),
+      });
+
+      setResult(analysis);
+      await checkSession();
+
+      if (analysis.is_scam) {
+        toast.warning(
+          analysis.stored_in_community
+            ? 'Scam detected and saved to the community feed.'
+            : 'Scam detected.',
+        );
+      } else {
+        toast.success('Analysis completed.');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Analysis failed.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const scoreColor = (score: number) => {
-    if (score >= 75) return 'text-destructive';
-    if (score >= 50) return 'text-warning';
-    return 'text-success';
-  };
-
-  const severityColor = (s: string) => {
-    if (s === 'critical') return 'text-destructive bg-destructive/10';
-    if (s === 'high') return 'text-warning bg-warning/10';
-    return 'text-primary bg-primary/10';
-  };
+  const score = result ? Math.round(Number(result.spam_probability ?? 0) * 100) : 0;
+  const recommendations = result ? buildRecommendations(result, lastAnalyzedTab) : [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -136,8 +183,8 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-xl p-6"
-        >
+            className="glass rounded-xl p-6"
+          >
           <h2 className="font-display text-xl font-bold mb-6">Analysis Results</h2>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -151,14 +198,31 @@ export default function DashboardPage() {
                     stroke="currentColor"
                     strokeWidth="8"
                     strokeLinecap="round"
-                    strokeDasharray={`${result.score * 3.14} 314`}
-                    className={scoreColor(result.score)}
+                    strokeDasharray={`${score * 3.14} 314`}
+                    className={scoreColor(score)}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-4xl font-display font-bold ${scoreColor(result.score)}`}>{result.score}</span>
+                  <span className={`text-4xl font-display font-bold ${scoreColor(score)}`}>{score}</span>
                   <span className="text-xs text-muted-foreground">Risk Score</span>
                 </div>
+              </div>
+              <div className="mt-4 text-center space-y-2">
+                <div className={`text-sm font-semibold ${result.is_scam ? 'text-destructive' : 'text-success'}`}>
+                  {result.is_scam ? 'Likely Scam' : 'Low-Risk Content'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Prediction: <span className="capitalize text-foreground">{result.prediction}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Threshold: {(Number(result.threshold ?? 0.3) * 100).toFixed(0)}%
+                </p>
+                {result.location && (
+                  <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {result.location}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -168,11 +232,28 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-4 w-4 text-warning" /> Detected Triggers
               </h3>
               <div className="space-y-2">
-                {mockTriggers.map((t) => (
-                  <div key={t.label} className={`text-sm px-3 py-2 rounded-lg ${severityColor(t.severity)}`}>
-                    {t.label}
+                {result.triggers.length ? (
+                  result.triggers.map((trigger) => (
+                    <div key={`${trigger.key}-${trigger.label}`} className="text-sm px-3 py-3 rounded-lg bg-warning/10 text-foreground">
+                      <div className="font-medium flex items-center gap-2">
+                        <span>{trigger.icon}</span>
+                        {trigger.label}
+                      </div>
+                      {trigger.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{trigger.description}</p>
+                      )}
+                      {trigger.matches.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Matches: {trigger.matches.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm px-3 py-3 rounded-lg bg-success/10 text-success">
+                    No scam triggers were detected in this sample.
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -181,17 +262,31 @@ export default function DashboardPage() {
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-success" /> Recommendations
               </h3>
+              <div className="rounded-lg bg-secondary/40 p-3 mb-4">
+                <div className="flex items-start gap-2 text-sm">
+                  <ShieldAlert className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <p className="text-muted-foreground">
+                    {result.explanation || 'No explanation was returned by the model.'}
+                  </p>
+                </div>
+              </div>
               <ul className="space-y-2">
-                {mockRecommendations.map((r) => (
+                {recommendations.map((r) => (
                   <li key={r} className="text-sm text-muted-foreground flex items-start gap-2">
                     <CheckCircle className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
                     {r}
                   </li>
                 ))}
               </ul>
-              <Button variant="destructive" size="sm" className="mt-4">
-                <AlertTriangle className="h-4 w-4" /> Report This
-              </Button>
+              {result.stored_in_community ? (
+                <Button variant="destructive" size="sm" className="mt-4" onClick={() => navigate('/community')}>
+                  <AlertTriangle className="h-4 w-4" /> View Community Report
+                </Button>
+              ) : (
+                <Button variant="cyber-outline" size="sm" className="mt-4" onClick={() => navigate('/report')}>
+                  <FileText className="h-4 w-4" /> Report Manually
+                </Button>
+              )}
             </div>
           </div>
         </motion.div>

@@ -19,11 +19,12 @@ export default function RegisterPage() {
     e.preventDefault();
     if (password !== confirm) { toast.error('Passwords do not match.'); return; }
     try {
-      await register(name, email, password);
-      toast.success('Welcome to the network, Agent.');
-      navigate('/dashboard');
-    } catch {
-      toast.error('Registration failed.');
+      const message = await register(name, email, password);
+      toast.success(message);
+      navigate(`/verification?pending=1&email=${encodeURIComponent(email)}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Registration failed.';
+      toast.error(message);
     }
   };
 
