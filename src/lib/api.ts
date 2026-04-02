@@ -20,6 +20,31 @@ export type AnalysisTrigger = {
   matches: string[];
 };
 
+export type UrlRedirectHop = {
+  from: string;
+  to: string;
+  status: number;
+};
+
+export type UrlAnalysisDetails = {
+  normalized_url: string;
+  hostname: string;
+  ascii_hostname: string;
+  registrable_domain: string | null;
+  protocol: string;
+  port: string | null;
+  path: string;
+  has_https: boolean;
+  uses_ip_host: boolean;
+  dns_status: string;
+  dns_resolved: boolean;
+  dns_message: string;
+  resolved_addresses: string[];
+  redirect_chain: UrlRedirectHop[];
+  redirect_message: string;
+  final_url: string | null;
+};
+
 export type ScamAnalysisResponse = {
   prediction: string;
   spam_probability: number;
@@ -27,6 +52,11 @@ export type ScamAnalysisResponse = {
   triggers: AnalysisTrigger[];
   explanation: string;
   is_scam: boolean;
+  risk_level: 'low' | 'medium' | 'high';
+  verdict_title: string;
+  verdict_summary: string;
+  analysis_mode: 'text' | 'url';
+  url_details: UrlAnalysisDetails | null;
   scan_id: string;
   stored_scam_id: string | null;
   stored_in_community: boolean;

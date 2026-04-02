@@ -97,5 +97,5 @@ export function ensureSessionLocation(request) {
 }
 
 export function getSessionLocationLabel(request) {
-  return request.session?.userLocation?.label ?? null;
+  return request.session?.userLocation?.label ?? extractLocationFromRequest(request).label ?? null;
 }

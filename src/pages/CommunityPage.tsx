@@ -162,6 +162,10 @@ export default function CommunityPage() {
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeColors[report.type]}`}>
                     {report.type}
                   </span>
+                  <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/60 px-2.5 py-1 text-xs text-foreground">
+                    <MapPin className="h-3 w-3 text-primary" />
+                    Seen in {report.location}
+                  </span>
                   {report.verified && (
                     <span className="flex items-center gap-1 text-xs text-success">
                       <CheckCircle className="h-3 w-3" /> Verified
@@ -172,13 +176,14 @@ export default function CommunityPage() {
                     {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })}
                   </span>
                 </div>
-                <p className="text-sm text-foreground/90 mb-2 line-clamp-2">{report.content}</p>
+                <p className="mb-2 text-base leading-7 text-foreground/90">{report.content}</p>
                 {report.explanation && (
-                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{report.explanation}</p>
+                  <div className="mb-3 rounded-lg border border-border/50 bg-secondary/40 p-3">
+                    <p className="text-sm leading-6 text-muted-foreground">{report.explanation}</p>
+                  </div>
                 )}
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {report.location}
+                <p className="text-xs text-muted-foreground">
+                  Reported by {report.reporterName}
                 </p>
               </div>
               <div className="flex flex-col items-center gap-1 shrink-0">

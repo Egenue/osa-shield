@@ -3,6 +3,7 @@ import { Scam, ScamScan, ScamVote, User } from "../config/db.js";
 import { analyzeMessageWithOsaModel } from "../services/osaModelService.js";
 import { getSessionLocationLabel, ensureSessionLocation } from "../services/sessionLocationService.js";
 import { getUserActivityHistory } from "../services/userMetricsService.js";
+import { analyzeUrlThreat } from "../services/urlThreatAnalysisService.js";
 
 function parseLimit(rawLimit, fallback = 20) {
   const parsed = Number(rawLimit);
@@ -106,6 +107,41 @@ function handleControllerError(reply, error) {
     .send({ message: error.message || "Internal server error" });
 }
 
+function determineRiskLevel(score, threshold, isScam) {
+  if (score >= Math.max(0.75, threshold + 0.15)) {
+    return "high";
+  }
+
+  if (score >= Math.max(0.3, threshold - 0.2) || isScam) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function buildTextVerdict(analysis, normalizedInputType) {
+  const riskLevel = determineRiskLevel(analysis.spamProbability, analysis.threshold, analysis.isScam);
+
+  if (analysis.isScam) {
+    return {
+      riskLevel,
+      verdictTitle:
+        normalizedInputType === "url" ? "Suspicious content detected" : "High-risk message detected",
+      verdictSummary:
+        analysis.triggers.length > 0
+          ? `The analysis found ${analysis.triggers.length} scam signal${analysis.triggers.length === 1 ? "" : "s"} in this sample.`
+          : "The model marked this sample as risky even though it did not return explicit trigger labels.",
+    };
+  }
+
+  return {
+    riskLevel,
+    verdictTitle: "No strong scam evidence found",
+    verdictSummary:
+      "The model did not find enough signals to classify this sample as a scam, but you should still verify unexpected requests through a trusted channel.",
+  };
+}
+
 export const analyzeScamController = async (request, reply) => {
   try {
     const userId = request.session?.userId;
@@ -124,7 +160,24 @@ export const analyzeScamController = async (request, reply) => {
 
     ensureSessionLocation(request);
 
-    const analysis = await analyzeMessageWithOsaModel(normalizedContent);
+    const analysis =
+      normalizedInputType === "url"
+        ? await analyzeUrlThreat(normalizedContent)
+        : await analyzeMessageWithOsaModel(normalizedContent);
+    const feedback =
+      normalizedInputType === "url"
+        ? {
+            riskLevel: analysis.riskLevel,
+            verdictTitle: analysis.verdictTitle,
+            verdictSummary: analysis.verdictSummary,
+            analysisMode: analysis.analysisMode,
+            urlDetails: analysis.urlDetails,
+          }
+        : {
+            ...buildTextVerdict(analysis, normalizedInputType),
+            analysisMode: normalizedInputType,
+            urlDetails: null,
+          };
     const scan = await ScamScan.create({
       user_id: userId,
       input_type: normalizedInputType,
@@ -161,6 +214,11 @@ export const analyzeScamController = async (request, reply) => {
       triggers: analysis.triggers,
       explanation: analysis.explanation,
       is_scam: analysis.isScam,
+      risk_level: feedback.riskLevel,
+      verdict_title: feedback.verdictTitle,
+      verdict_summary: feedback.verdictSummary,
+      analysis_mode: feedback.analysisMode,
+      url_details: feedback.urlDetails,
       scan_id: scan.scan_id,
       stored_scam_id: storedScam?.scam_id ?? null,
       stored_in_community: Boolean(storedScam),
