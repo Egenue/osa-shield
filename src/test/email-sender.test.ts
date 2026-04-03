@@ -68,7 +68,7 @@ describe("sendConfirmEmail", () => {
     process.env.EMAIL_SMTP_SECURE = "true";
     process.env.EMAIL_SMTP_SERVERNAME = "smtp.gmail.com";
     process.env.EMAIL_PREFER_IPV4 = "true";
-    delete process.env.EMAIL_PROVIDER;
+    process.env.EMAIL_PROVIDER = "smtp";
     delete process.env.EMAIL_FROM;
     delete process.env.EMAIL_REPLY_TO;
     delete process.env.RESEND_API_KEY;
@@ -109,6 +109,7 @@ describe("sendConfirmEmail", () => {
   });
 
   it("uses Resend automatically when an API key is configured", async () => {
+    process.env.EMAIL_PROVIDER = "resend";
     process.env.RESEND_API_KEY = "re_test_123";
     process.env.EMAIL_FROM = "OSA <onboarding@example.com>";
     process.env.EMAIL_REPLY_TO = "support@example.com";
@@ -149,6 +150,7 @@ describe("sendConfirmEmail", () => {
   });
 
   it("uses Gmail API automatically when refresh-token credentials are configured", async () => {
+    process.env.EMAIL_PROVIDER = "gmail_api";
     process.env.GMAIL_CLIENT_ID = "gmail-client-id";
     process.env.GMAIL_CLIENT_SECRET = "gmail-client-secret";
     process.env.GMAIL_REFRESH_TOKEN = "gmail-refresh-token";

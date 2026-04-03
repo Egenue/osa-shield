@@ -49,6 +49,7 @@ function createReply() {
 describe("registerController", () => {
   beforeEach(() => {
     vi.resetModules();
+    delete process.env.DEMO_MODE;
     findOne.mockReset();
     createUser.mockReset();
     updateConfirmEmail.mockReset();
@@ -100,5 +101,45 @@ describe("registerController", () => {
       "fresh@example.com",
       expect.stringContaining("/verification?token=")
     );
+  });
+
+  it("auto-verifies new accounts in demo mode without sending email", async () => {
+    process.env.DEMO_MODE = "true";
+    findOne.mockResolvedValue(null);
+    hashPassword.mockResolvedValue("hashed-password");
+    createUser.mockResolvedValue({
+      user_id: "user-123",
+      email: "fresh@example.com",
+      is_verified: true,
+    });
+
+    const { registerController } = await import("../../backend/controllers/userController.js");
+
+    const reply = createReply();
+    const request = {
+      body: {
+        name: "Test",
+        email: "fresh@example.com",
+        password: "secret123",
+      },
+      log: {
+        error: vi.fn(),
+      },
+    };
+
+    await registerController(request, reply);
+
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "fresh@example.com",
+        is_verified: true,
+      })
+    );
+    expect(reply.statusCode).toBe(201);
+    expect(reply.payload).toEqual({
+      message: "Account created successfully. Demo mode auto-verified your account.",
+    });
+    expect(createConfirmEmail).not.toHaveBeenCalled();
+    expect(sendConfirmEmail).not.toHaveBeenCalled();
   });
 });

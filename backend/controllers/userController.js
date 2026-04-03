@@ -6,6 +6,7 @@ import { ensureSessionLocation, getSessionLocationLabel } from "../services/sess
 import { getUserSummary } from "../services/userMetricsService.js";
 
 const VERIFICATION_TTL_MINUTES = Number(process.env.VERIFICATION_TTL_MINUTES || 45);
+const isDemoModeEnabled = String(process.env.DEMO_MODE ?? "false").toLowerCase() === "true";
 
 async function toPublicUser(user, request) {
   const summary = await getUserSummary(user.user_id);
@@ -91,10 +92,10 @@ export const registerController = async (request, reply) => {
       return reply.code(400).send({ message: "All fields are required" });
     }
 
-    if (!isEmailServiceConfigured()) {
+    if (!isDemoModeEnabled && !isEmailServiceConfigured()) {
       return reply
         .code(500)
-        .send({ message: "Email service not configured. Set EMAIL_USER and EMAIL_PASS." });
+        .send({ message: "Email service not configured for registration." });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
@@ -115,6 +116,14 @@ export const registerController = async (request, reply) => {
         password: hashedPassword,
       });
 
+      if (isDemoModeEnabled) {
+        await existingUser.update({ is_verified: true });
+
+        return reply.code(200).send({
+          message: "Account restored and auto-verified for demo mode. You can now log in.",
+        });
+      }
+
       const token = await createFreshVerificationToken(existingUser.user_id);
       const confirmLink = buildConfirmLink(token);
       queueConfirmationEmail(request, existingUser.email, confirmLink);
@@ -131,7 +140,14 @@ export const registerController = async (request, reply) => {
       name: normalizedName,
       email: normalizedEmail,
       password: hashedPassword,
+      is_verified: isDemoModeEnabled,
     });
+
+    if (isDemoModeEnabled) {
+      return reply.code(201).send({
+        message: "Account created successfully. Demo mode auto-verified your account.",
+      });
+    }
 
     const token = await createFreshVerificationToken(newUser.user_id);
     const confirmLink = buildConfirmLink(token);
@@ -215,20 +231,24 @@ export const loginController = async (request, reply) => {
     }
 
     if (!user.is_verified) {
-      if (!isEmailServiceConfigured()) {
-        return reply.code(500).send({
-          message: "Email is not verified and email service is not configured.",
+      if (isDemoModeEnabled) {
+        await user.update({ is_verified: true });
+      } else {
+        if (!isEmailServiceConfigured()) {
+          return reply.code(500).send({
+            message: "Email is not verified and email service is not configured.",
+          });
+        }
+
+        const token = await createFreshVerificationToken(user.user_id);
+        const confirmLink = buildConfirmLink(token);
+        queueConfirmationEmail(request, user.email, confirmLink);
+
+        return reply.code(403).send({
+          message:
+            "Email is not verified. A new confirmation email is being sent. Please verify your email first.",
         });
       }
-
-      const token = await createFreshVerificationToken(user.user_id);
-      const confirmLink = buildConfirmLink(token);
-      queueConfirmationEmail(request, user.email, confirmLink);
-
-      return reply.code(403).send({
-        message:
-          "Email is not verified. A new confirmation email is being sent. Please verify your email first.",
-      });
     }
 
     request.session.userId = user.user_id;

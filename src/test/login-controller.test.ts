@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findOne = vi.fn();
+const updateUser = vi.fn();
 const updateConfirmEmail = vi.fn();
 const createConfirmEmail = vi.fn();
 const sendConfirmEmail = vi.fn();
@@ -11,6 +12,12 @@ const comparePassword = vi.fn();
 vi.mock("../../backend/config/db.js", () => ({
   User: {
     findOne,
+  },
+  ScamScan: {
+    count: vi.fn().mockResolvedValue(0),
+  },
+  Scam: {
+    count: vi.fn().mockResolvedValue(0),
   },
   ConfirmEmail: {
     update: updateConfirmEmail,
@@ -47,7 +54,9 @@ function createReply() {
 describe("loginController", () => {
   beforeEach(() => {
     vi.resetModules();
+    delete process.env.DEMO_MODE;
     findOne.mockReset();
+    updateUser.mockReset();
     updateConfirmEmail.mockReset();
     createConfirmEmail.mockReset();
     sendConfirmEmail.mockReset();
@@ -97,5 +106,48 @@ describe("loginController", () => {
       "fresh@example.com",
       expect.stringContaining("/verification?token=")
     );
+  });
+
+  it("auto-verifies existing users in demo mode and allows login", async () => {
+    process.env.DEMO_MODE = "true";
+    findOne.mockResolvedValue({
+      user_id: "user-123",
+      email: "fresh@example.com",
+      password: "hashed-password",
+      is_verified: false,
+      update: updateUser.mockResolvedValue({}),
+    });
+    comparePassword.mockResolvedValue(true);
+
+    const { loginController } = await import("../../backend/controllers/userController.js");
+
+    const reply = createReply();
+    const request = {
+      body: {
+        identifier: "fresh@example.com",
+        password: "secret123",
+      },
+      session: {},
+      headers: {},
+      ip: "127.0.0.1",
+      log: {
+        error: vi.fn(),
+      },
+    };
+
+    await loginController(request, reply);
+
+    expect(updateUser).toHaveBeenCalledWith({ is_verified: true });
+    expect(reply.statusCode).toBe(200);
+    expect(reply.payload).toEqual(
+      expect.objectContaining({
+        message: "Login successful",
+        user: expect.objectContaining({
+          email: "fresh@example.com",
+        }),
+      })
+    );
+    expect(request.session.userId).toBe("user-123");
+    expect(sendConfirmEmail).not.toHaveBeenCalled();
   });
 });
