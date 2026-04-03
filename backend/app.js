@@ -4,6 +4,7 @@ import cookie from "@fastify/cookie";
 import session from "@fastify/session";
 import routes from "./routes/routes.js";
 import sequelize from "./config/db.js";
+import { resolveSessionCookieConfig, resolveTrustProxy } from "./config/sessionConfig.js";
 import {
   isDatabaseReady,
   markDatabaseConnected,
@@ -19,6 +20,7 @@ const requireDbAtStartup =
 
 const fastify = Fastify({
   logger: true,
+  trustProxy: resolveTrustProxy(),
 });
 
 const rawSessionSecret =
@@ -31,13 +33,7 @@ fastify.register(session, {
   secret: sessionSecret,
   cookieName: "sessionId",
   saveUninitialized: false,
-  cookie: {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  },
+  cookie: resolveSessionCookieConfig(),
 });
 
 fastify.register(routes, { prefix: "/" });
