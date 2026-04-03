@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import { ConfirmEmail, User } from "../config/db.js";
-import { sendConfirmEmail } from "../data/emailSender.js";
+import { isEmailServiceConfigured, sendConfirmEmail } from "../data/emailSender.js";
 import { ensureSessionLocation, getSessionLocationLabel } from "../services/sessionLocationService.js";
 import { getUserSummary } from "../services/userMetricsService.js";
 
@@ -69,12 +69,32 @@ async function createFreshVerificationToken(userId) {
   return token;
 }
 
+function queueConfirmationEmail(request, recipientEmail, confirmLink) {
+  void sendConfirmEmail(recipientEmail, confirmLink).catch((error) => {
+    if (request?.log?.error) {
+      request.log.error(
+        { err: error, recipientEmail },
+        "Failed to send confirmation email after registration"
+      );
+      return;
+    }
+
+    console.error("Failed to send confirmation email after registration", error);
+  });
+}
+
 export const registerController = async (request, reply) => {
   try {
     const { name, email, password } = request.body ?? {};
 
     if (!name || !email || !password) {
       return reply.code(400).send({ message: "All fields are required" });
+    }
+
+    if (!isEmailServiceConfigured()) {
+      return reply
+        .code(500)
+        .send({ message: "Email service not configured. Set EMAIL_USER and EMAIL_PASS." });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
@@ -97,10 +117,11 @@ export const registerController = async (request, reply) => {
 
       const token = await createFreshVerificationToken(existingUser.user_id);
       const confirmLink = buildConfirmLink(token);
-      await sendConfirmEmail(existingUser.email, confirmLink);
+      queueConfirmationEmail(request, existingUser.email, confirmLink);
 
       return reply.code(200).send({
-        message: "Account exists but is not verified. A new confirmation email has been sent.",
+        message:
+          "Account exists but is not verified. A new confirmation email is being sent.",
       });
     }
 
@@ -114,10 +135,11 @@ export const registerController = async (request, reply) => {
 
     const token = await createFreshVerificationToken(newUser.user_id);
     const confirmLink = buildConfirmLink(token);
-    await sendConfirmEmail(newUser.email, confirmLink);
+    queueConfirmationEmail(request, newUser.email, confirmLink);
 
     return reply.code(201).send({
-      message: "Account created successfully. Please confirm your email.",
+      message:
+        "Account created successfully. Please confirm your email when the verification message arrives.",
     });
   } catch (error) {
     console.error(error);
