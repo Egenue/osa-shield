@@ -215,8 +215,19 @@ export const loginController = async (request, reply) => {
     }
 
     if (!user.is_verified) {
+      if (!isEmailServiceConfigured()) {
+        return reply.code(500).send({
+          message: "Email is not verified and email service is not configured.",
+        });
+      }
+
+      const token = await createFreshVerificationToken(user.user_id);
+      const confirmLink = buildConfirmLink(token);
+      queueConfirmationEmail(request, user.email, confirmLink);
+
       return reply.code(403).send({
-        message: "Email is not verified. Please verify your email first.",
+        message:
+          "Email is not verified. A new confirmation email is being sent. Please verify your email first.",
       });
     }
 
