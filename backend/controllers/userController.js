@@ -74,12 +74,12 @@ function queueConfirmationEmail(request, recipientEmail, confirmLink) {
     if (request?.log?.error) {
       request.log.error(
         { err: error, recipientEmail },
-        "Failed to send confirmation email after registration"
+        "Failed to send confirmation email"
       );
       return;
     }
 
-    console.error("Failed to send confirmation email after registration", error);
+    console.error("Failed to send confirmation email", error);
   });
 }
 

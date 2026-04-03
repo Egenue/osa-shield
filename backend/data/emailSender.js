@@ -1,3 +1,5 @@
+import { resolve4 } from "node:dns/promises";
+import net from "node:net";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
@@ -6,6 +8,13 @@ dotenv.config();
 const connectionTimeoutMs = Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000);
 const greetingTimeoutMs = Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000);
 const socketTimeoutMs = Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 15000);
+const smtpPort = Number(process.env.EMAIL_SMTP_PORT || 465);
+const smtpSecure =
+  String(process.env.EMAIL_SMTP_SECURE ?? (smtpPort === 465 ? "true" : "false")).toLowerCase() ===
+  "true";
+const smtpHostname = process.env.EMAIL_SMTP_HOST?.trim() || "smtp.gmail.com";
+const smtpServername = process.env.EMAIL_SMTP_SERVERNAME?.trim() || smtpHostname;
+const smtpPreferIpv4 = String(process.env.EMAIL_PREFER_IPV4 ?? "true").toLowerCase() !== "false";
 
 function getEmailCredentials() {
   return {
@@ -14,9 +23,24 @@ function getEmailCredentials() {
   };
 }
 
-function buildTransporter(emailUser, emailPass) {
+async function resolveSmtpHost() {
+  if (!smtpPreferIpv4 || net.isIP(smtpHostname)) {
+    return smtpHostname;
+  }
+
+  try {
+    const addresses = await resolve4(smtpHostname);
+    return addresses[0] || smtpHostname;
+  } catch {
+    return smtpHostname;
+  }
+}
+
+function buildTransporter(emailUser, emailPass, host) {
   return nodemailer.createTransport({
-    service: "gmail",
+    host,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -24,6 +48,9 @@ function buildTransporter(emailUser, emailPass) {
     connectionTimeout: connectionTimeoutMs,
     greetingTimeout: greetingTimeoutMs,
     socketTimeout: socketTimeoutMs,
+    tls: {
+      servername: smtpServername,
+    },
   });
 }
 
@@ -39,7 +66,8 @@ export async function sendConfirmEmail(recipientEmail, confirmLink) {
     throw new Error("Email service not configured. Set EMAIL_USER and EMAIL_PASS.");
   }
 
-  const transporter = buildTransporter(emailUser, emailPass);
+  const host = await resolveSmtpHost();
+  const transporter = buildTransporter(emailUser, emailPass, host);
 
   const html = `
     <html>
