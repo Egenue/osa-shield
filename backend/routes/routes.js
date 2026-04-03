@@ -16,16 +16,43 @@ import {
   voteOnScamController,
 } from "../controllers/scamController.js";
 
-const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:8080,http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const DEFAULT_ALLOWED_ORIGINS = "http://localhost:8080,http://localhost:8081,http://localhost:5173";
+
+function normalizeOrigin(value) {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    return "";
+  }
+
+  if (trimmedValue === "*") {
+    return trimmedValue;
+  }
+
+  try {
+    return new URL(trimmedValue).origin;
+  } catch {
+    return trimmedValue.replace(/\/+$/, "");
+  }
+}
+
+function getAllowedOrigins() {
+  return (process.env.CORS_ORIGINS ?? DEFAULT_ALLOWED_ORIGINS)
+    .split(",")
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean);
+}
 
 function applyCorsHeaders(request, reply) {
-  const origin = request.headers.origin;
+  const origin = normalizeOrigin(request.headers.origin);
+  const allowedOrigins = getAllowedOrigins();
+  const requestedHeaders = request.headers["access-control-request-headers"];
 
   if (!origin) {
     reply.header("Access-Control-Allow-Origin", "*");
+  } else if (allowedOrigins.includes("*")) {
+    reply.header("Access-Control-Allow-Origin", origin);
+    reply.header("Vary", "Origin");
   } else if (allowedOrigins.includes(origin)) {
     reply.header("Access-Control-Allow-Origin", origin);
     reply.header("Vary", "Origin");
@@ -33,7 +60,10 @@ function applyCorsHeaders(request, reply) {
 
   reply.header("Access-Control-Allow-Credentials", "true");
   reply.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  reply.header(
+    "Access-Control-Allow-Headers",
+    requestedHeaders || "Content-Type, Authorization"
+  );
 }
 
 export default async function routes(fastify) {
