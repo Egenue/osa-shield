@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import { ConfirmEmail, User } from "../config/db.js";
-import { isEmailServiceConfigured, sendConfirmEmail } from "../data/emailSender.js";
+import { sendConfirmEmail } from "../data/emailSender.js";
 import { ensureSessionLocation, getSessionLocationLabel } from "../services/sessionLocationService.js";
 import { getUserSummary } from "../services/userMetricsService.js";
 
@@ -92,11 +92,11 @@ export const registerController = async (request, reply) => {
       return reply.code(400).send({ message: "All fields are required" });
     }
 
-    if (!isDemoModeEnabled && !isEmailServiceConfigured()) {
-      return reply
-        .code(500)
-        .send({ message: "Email service not configured for registration." });
-    }
+    // if (!isDemoModeEnabled && !isEmailServiceConfigured()) {
+    //   return reply
+    //     .code(500)
+    //     .send({ message: "Email service not configured for registration." });
+    // }
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const normalizedName = String(name).trim();
