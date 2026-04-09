@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Activity, Users, Map, Menu, X, LogIn } from 'lucide-react';
+import { Shield, Activity, Users, Map, Menu, X, LogIn, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -8,6 +8,7 @@ const navItems = [
   { label: 'Analyzer', icon: Activity, path: '/dashboard' },
   { label: 'Community', icon: Users, path: '/community' },
   { label: 'Threat Map', icon: Map, path: '/threats' },
+  { label: 'Zone', icon: Globe, path: '/zone' },
 ];
 
 export default function Navbar() {

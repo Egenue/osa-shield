@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  PlusCircle, Activity, Search, MessageSquare, ThumbsUp, ThumbsDown, X, ArrowLeft, Send, User, ShieldAlert
+  PlusCircle, Activity, Search, MessageSquare, ThumbsUp, ThumbsDown, X, ArrowLeft, Send, User, ShieldAlert, ShareIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -136,6 +136,10 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
     setVoteType(type);
   };
 
+  function handleCopyLink(){
+    toast.success("Link copied successfully");
+  }
+
   return (
     <Card className="glass border-border/50 bg-card/60 transition-all hover:border-primary/30 overflow-hidden">
       <div className="flex">
@@ -161,12 +165,17 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
             <Button variant="ghost" size="sm" onClick={onOpenComments} className="h-8 gap-2 text-xs text-muted-foreground hover:text-primary px-0">
               <MessageSquare className="h-4 w-4" /> {post.comments.length} Comments
             </Button>
-            <div className={cn(
+
+            <Button variant="ghost" size="sm" onClick={handleCopyLink} className='h-8 gap-2 text-xs text-muted-foreground hover:text-primary px-0'>
+              <ShareIcon/> Share
+            </Button>
+            {/* <div className={cn(
               "text-[9px] font-bold px-2 py-0.5 rounded border uppercase",
               post.threatVerdict === 'high' ? "border-destructive/50 text-destructive bg-destructive/10" : "border-success/50 text-success bg-success/10"
             )}>
               {post.threatVerdict} Risk
-            </div>
+            </div> */}
+
           </CardFooter>
         </div>
       </div>
@@ -224,7 +233,7 @@ export default function Zone() {
               <Card className="glass border-primary/50 shadow-[0_0_20px_rgba(0,255,255,0.1)] relative">
                 <Button variant="ghost" size="icon" className="absolute right-2 top-2" onClick={() => setIsCreateModalOpen(false)}><X className="h-4 w-4" /></Button>
                 <CardHeader>
-                  <CardTitle className="font-display text-xl text-primary text-glow">Initiate New Discussion</CardTitle>
+                  <CardTitle className="font-display text-xl text-primary text-glow">Create New Discussion</CardTitle>
                   <CardDescription className="text-xs italic">Broadcast intelligence to the OSA assembly.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -237,14 +246,14 @@ export default function Zone() {
                     <textarea id="t-summary" className="w-full rounded-md border border-primary/20 bg-secondary/10 p-3 text-sm focus:ring-1 focus:ring-primary outline-none min-h-[100px]" placeholder="Describe the findings..." />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
+                    {/* <div className="space-y-1">
                       <label className="text-[10px] font-bold uppercase text-muted-foreground">Risk Level</label>
                       <select id="t-risk" className="w-full bg-secondary/20 border border-primary/20 rounded-md p-2 text-sm text-foreground outline-none">
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
                       </select>
-                    </div>
+                    </div> */}
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-3">
