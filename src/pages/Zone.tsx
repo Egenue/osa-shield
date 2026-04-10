@@ -23,6 +23,8 @@ import { comment } from 'postcss';
 function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => void, onAddComment: (postId: string, text: string) => void }) {
   const [replyText, setReplyText] = useState('');
 
+  const [activeComments, setActiveComments] = useState<any[]>([]);
+
   const handleSend = () => {
     if (!replyText.trim()) return;
     onAddComment(post.id, replyText);
@@ -32,7 +34,7 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
 
   useEffect(() => {
     const fetchComments = async () => {
-      const response = await fetch(`${API_BASE_URL}/thread${post.id}/comments`, {
+      const response = await fetch(`${API_BASE_URL}/thread/${post.id}/comments`, {
         credentials: "include"
       });
       if(response.ok){
@@ -44,6 +46,8 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
           text: c.comment,
           time: formatDistanceToNow(new Date(c.created_at)) + "ago"
         }));
+
+        setActiveComments(normalized);
       }
     };
     if (post.id) fetchComments();
@@ -72,7 +76,7 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">Assembly Discussion</h3>
         
         <AnimatePresence mode="popLayout">
-          {post.comments.map((c: any) => (
+          {activeComments.map((c: any) => (
             <motion.div 
               key={c.id}
               initial={{ opacity: 0, y: 10 }}
@@ -125,14 +129,37 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
 
 // --- SUB-COMPONENT: POST CARD ---
 function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => void }) {
-  const [votes, setVotes] = useState(post.initialVotes);
+  const [votes, setVotes] = useState(0);
   const [voteType, setVoteType] = useState<'up' | 'down' | null>(null);
 
-  const handleVote = (type: 'up' | 'down') => {
-    if (voteType === type) return;
-    setVotes((prev: number) => type === 'up' ? prev + 1 : prev - 1);
-    setVoteType(type);
+  const handleVote = async(type: 'like' | 'dislike') => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/thread/${post.id}/thread-likes`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({likeType: type}),
+    }); 
+
+    if(response.ok){
+      toast.success("Refreshed");
+    }
+
+    } catch (error) {
+      toast.error("Likes and dislikes failed to count") 
+    }
+    
+   
   };
+
+  useEffect(() => {
+    const getCounts = async () => {
+      const res = await fetch(`${API_BASE_URL}/thread/${post.id}/votes/count`);
+      const data = await res.json();
+      if(res.ok) setVotes(data.totalScore);
+    };
+    getCounts();
+  }, [post.id]);
 
   function handleCopyLink(){
     toast.success("Link copied successfully");
@@ -144,9 +171,9 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
     <Card className="glass border-border/50 bg-card/60 transition-all hover:border-primary/30 overflow-hidden">
       <div className="flex">
         <div className="flex flex-col items-center gap-1 p-4 bg-secondary/20 border-r border-border/40 w-16">
-          <button onClick={() => handleVote('up')} className={cn("hover:text-success transition-colors", voteType === 'up' && "text-success")}><ThumbsUp className="h-4 w-4" /></button>
+          <button onClick={() => handleVote('like')} className={cn("hover:text-success transition-colors", voteType === 'up' && "text-success")}><ThumbsUp className="h-4 w-4" /></button>
           <span className="font-bold text-sm">{votes}</span>
-          <button onClick={() => handleVote('down')} className={cn("hover:text-destructive transition-colors", voteType === 'down' && "text-destructive")}><ThumbsDown className="h-4 w-4" /></button>
+          <button onClick={() => handleVote('dislike')} className={cn("hover:text-destructive transition-colors", voteType === 'down' && "text-destructive")}><ThumbsDown className="h-4 w-4" /></button>
         </div>
 
         <div className="flex-1">

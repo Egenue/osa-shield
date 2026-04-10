@@ -18,7 +18,9 @@ import {
 import { createThreadController,
   getCreatedThreadsController,
   createThreadCommentController,
-  getThreadCommentController
+  getThreadCommentController,
+  threadLikesController,
+  threadLikeAndDislikesCountsController
  } from "../controllers/threadController.js";
 import fastify from "fastify";
 
@@ -92,7 +94,9 @@ export default async function routes(fastify) {
     "/thread",
     "/created-threads",
     "/thread/:threadId/comment",
-    "thread/:threadId/comments"
+    "/thread/:threadId/comments",
+    "/thread/:threadId/thread-likes",
+    "/thread/:threadId/votes/count"
   ];
 
   for (const path of preflightPaths) {
@@ -196,6 +200,20 @@ fastify.get(
     preHandler: [requireDatabaseReady]
   },
   getThreadCommentController
+)
+fastify.post(
+  "/thread/:threadId/thread-likes",
+  {
+    preHandler: [requireAuthentication]
+  },
+  threadLikesController
+)
+fastify.get(
+  "/thread/:threadId/votes/count",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  threadLikeAndDislikesCountsController
 )
 
 };

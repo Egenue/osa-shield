@@ -1,6 +1,6 @@
 import { ok } from "node:assert";
 import { Thread, ThreadComments, ThreadLikes, User } from "../config/db.js";
-import { Op, fn, col } from "sequelize";
+import { Op, fn, col, where } from "sequelize";
 
 export const createThreadController = async(request, reply) => {
     try {
@@ -118,4 +118,91 @@ export const getThreadCommentController = async(request, reply) =>{
         return reply.code(500).send({message: "Internal server error"});
     }
 
+}
+
+export const threadLikesController = async(request, reply) => {
+    try {
+        const { threadId } = request.params;
+        const { likeType} = request.body;
+        const userId = request.session?.userId;
+
+        if(!userId){
+            return reply.code(401).send({message: "Unauthorized"});
+        }
+
+        if(!['like', 'dislike'].includes(likeType)){
+            return reply.code(400).send({message: "Invalid vote type"});
+        }
+
+        const existingVote = await ThreadLikes.findOne({
+            where: {
+                thread_id: threadId,
+                user_id: userId
+            }
+        });
+
+        if(existingVote){
+            if(existingVote.like_type === likeType){
+                await existingVote.destroy();
+                return reply.code(200).send({
+                    message: "Removed",
+                    action: "removed"
+                });
+            }else{
+                existingVote.like_type = likeType;
+                await existingVote.save();
+                return reply.code(200).send({
+                    message: "added",
+                    action: "updated"
+                });
+            }
+        }
+
+        const newVote = await ThreadLikes.create({
+            thread_id: threadId,
+            user_id: userId,
+            like_type: likeType
+        });
+
+        return reply.code(201).send({
+            message: "success",
+            action: "created",
+            vote: newVote
+        });
+    } catch (error) {
+        return reply.code(500).send({message: "Internal server error"});
+        console.error(error);
+    }
+}
+
+export const threadLikeAndDislikesCountsController = async(request, reply) => {
+    try {
+        const {threadId} = request.params;
+
+        const likes = await ThreadLikes.count({
+            where: {
+                thread_id: threadId,
+                like_type: 'like'
+            }
+        });
+        
+        const dislikes = await ThreadLikes.count({
+            where: {
+                thread_id: threadId,
+                like_type: 'dislike'
+            }
+        });
+
+        return reply.code(200).send({
+            ok: true,
+            threadId,
+            likes,
+            dislikes,
+            totalScore: likes - dislikes
+        });
+        
+    } catch (error) {
+        return reply.code(500).send({message: "Internal server error"});
+        console.log(error);
+    }
 }
