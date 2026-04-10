@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 import { subMinutes, subDays, formatDistanceToNow } from 'date-fns';
 import { API_BASE_URL } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
-import { json } from 'stream/consumers';
-import { timeStamp } from 'console';
+import { json, text } from 'stream/consumers';
+import { time, timeStamp } from 'console';
 import { title } from 'process';
+import { comment } from 'postcss';
 
 
 
@@ -28,6 +29,25 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
     setReplyText('');
     toast.success("Comment deployed to assembly.");
   };
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      const response = await fetch(`${API_BASE_URL}/thread${post.id}/comments`, {
+        credentials: "include"
+      });
+      if(response.ok){
+        const data = await response.json();
+
+        const normalized = data.comments.map((c: any)=> ({
+          id: c.comment_id,
+          user: c.user?.name,
+          text: c.comment,
+          time: formatDistanceToNow(new Date(c.created_at)) + "ago"
+        }));
+      }
+    };
+    if (post.id) fetchComments();
+  }, [post.id]);
 
 
   return (
@@ -172,19 +192,42 @@ export default function Zone() {
 
   const selectedPost = posts.find(p => p.id === selectedPostId);
 
-  const handleAddComment = (postId: string, text: string) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: [
-            ...post.comments,
-            { id: Date.now().toString(), user: 'YOU', text, time: 'Just now' }
-          ]
-        };
+  const handleAddComment = async(postId: string, text: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/thread/${postId}/comment`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: "include",
+        body: JSON.stringify({comment: text}),
+      });
+
+      const data = await response.json();
+
+      if(response.ok){
+        setPosts(prevPosts => prevPosts.map(post =>{
+          if(post.id === postId){
+            return {
+              ...post,
+              comments: [
+                ...post.comments,
+                {
+                  id: data.comment.comment_id,
+                  user: user?.name,
+                  text: text,
+                  time: 'Just now'
+                }
+              ]
+            };
+          }
+          return post;
+        }));
+        toast.success("Commented");
+      }else{
+        toast.error(data.message || "Failed to comment");
       }
-      return post;
-    }));
+    } catch (error) {
+      toast.error("Check your internet connection");
+    }
   };
 
  const handleCreateThread = async(title: string, detailedIntelligence) =>{

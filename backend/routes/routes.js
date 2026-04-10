@@ -16,8 +16,11 @@ import {
   voteOnScamController,
 } from "../controllers/scamController.js";
 import { createThreadController,
-  getCreatedThreadsController
+  getCreatedThreadsController,
+  createThreadCommentController,
+  getThreadCommentController
  } from "../controllers/threadController.js";
+import fastify from "fastify";
 
 const DEFAULT_ALLOWED_ORIGINS = "http://localhost:8080,http://localhost:8081,http://localhost:5173";
 
@@ -87,7 +90,9 @@ export default async function routes(fastify) {
     "/scams/:scamId/vote",
     "/profile/activity",
     "/thread",
-    "/created-threads"
+    "/created-threads",
+    "/thread/:threadId/comment",
+    "thread/:threadId/comments"
   ];
 
   for (const path of preflightPaths) {
@@ -177,4 +182,21 @@ export default async function routes(fastify) {
     },
     getCreatedThreadsController
   )
+
+  fastify.post(
+  "/thread/:threadId/comment",
+  {
+    preHandler: [requireDatabaseReady, requireAuthentication]
+  },
+  createThreadCommentController
+)
+fastify.get(
+  "/thread/:threadId/comments",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  getThreadCommentController
+)
+
 };
+
