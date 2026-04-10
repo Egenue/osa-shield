@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   PlusCircle, Activity, Search, MessageSquare, ThumbsUp, ThumbsDown, X, ArrowLeft, Send, User, ShieldAlert, ShareIcon
 } from 'lucide-react';
@@ -9,37 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { subMinutes, subDays, formatDistanceToNow } from 'date-fns';
+import { API_BASE_URL } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
+import { json } from 'stream/consumers';
+import { timeStamp } from 'console';
+import { title } from 'process';
 
-// --- MOCK DATA ---
-const INITIAL_POSTS = [
-  {
-    id: 'p1',
-    author: { name: 'Maintainer Alpha', trustScore: 92 },
-    timestamp: subMinutes(new Date(), 45),
-    title: 'High Risk Threat Trigger found in recent NPM package update',
-    summary: 'The latest release of the common-utils library appears to contain a persistent access backdoor trigger.',
-    tags: ['supply_chain', 'backdoor'],
-    initialVotes: 145,
-    initialComments: 28,
-    threatVerdict: 'high',
-    comments: [
-      { id: 'c1', user: 'SecurityExpert', text: 'I confirmed this on my local build environment as well.', time: '10m ago' },
-      { id: 'c2', user: 'Maintainer_Bravo', text: 'Blacklisting the IP range now.', time: '2m ago' }
-    ]
-  },
-  {
-    id: 'p2',
-    author: { name: 'Agent X', trustScore: 71 },
-    timestamp: subDays(new Date(), 1),
-    title: 'New Phishing Campaign targeting crypto wallets',
-    summary: 'Phishing pages detected using punycode URLs to mimic official assembly login portals.',
-    tags: ['phishing', 'crypto'],
-    initialVotes: 89,
-    initialComments: 51,
-    threatVerdict: 'medium',
-    comments: []
-  }
-];
+
+
 
 // --- SUB-COMPONENT: THREAD VIEW (COMMENT SECTION) ---
 function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => void, onAddComment: (postId: string, text: string) => void }) {
@@ -51,6 +28,7 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
     setReplyText('');
     toast.success("Comment deployed to assembly.");
   };
+
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
@@ -140,6 +118,8 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
     toast.success("Link copied successfully");
   }
 
+  
+
   return (
     <Card className="glass border-border/50 bg-card/60 transition-all hover:border-primary/30 overflow-hidden">
       <div className="flex">
@@ -159,7 +139,7 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
             <CardTitle className="text-lg font-display font-bold leading-tight">{post.title}</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-sm text-foreground/70 line-clamp-2">{post.summary}</p>
+            <p className="text-sm text-foreground/70 line-clamp-2">{post.detailedIntelligence}</p>
           </CardContent>
           <CardFooter className="p-4 pt-0 flex justify-between items-center">
             <Button variant="ghost" size="sm" onClick={onOpenComments} className="h-8 gap-2 text-xs text-muted-foreground hover:text-primary px-0">
@@ -185,9 +165,10 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
 
 // --- MAIN ZONE PAGE ---
 export default function Zone() {
-  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [posts, setPosts] = useState<any[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const selectedPost = posts.find(p => p.id === selectedPostId);
 
@@ -206,23 +187,83 @@ export default function Zone() {
     }));
   };
 
-  const handleCreateThread = (title: string, summary: string, risk: string) => {
+ const handleCreateThread = async(title: string, detailedIntelligence) =>{
+  try {
+    const response = await fetch(`${API_BASE_URL}/thread`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        title: title,
+        detailedIntelligence: detailedIntelligence,
+      }),
+    });
+
+    if(!response.ok){
+      const errorData = await response.json();
+      toast.error(errorData.message || "Server error");
+
+      return;
+    }
+    const data = await response.json();
+
     const newThread = {
-      id: `p-${Date.now()}`,
-      author: { name: 'YOU', trustScore: 100 },
-      timestamp: new Date(),
-      title,
-      summary,
-      tags: ['new_report'],
-      initialVotes: 1,
-      initialComments: 0,
-      threatVerdict: risk,
+      id: data.thread.thread_id,
+      author: {
+        name: user?.name,
+      },
+      title: title,
+      detailedIntelligence: detailedIntelligence,
+      timestamp: new Date(data.thread.created_at),
+      initialVotes: 0,
       comments: []
     };
+
     setPosts([newThread, ...posts]);
     setIsCreateModalOpen(false);
-    toast.success("Thread broadcasted to assembly.");
+    toast.success("Created zone discussion");
+  } catch (error) {
+    toast.error(error instanceof Error? error.message: "Failed to connect to network");
+  }
+};
+
+useEffect(() => {
+  const fetchThreads = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/created-threads`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if(!response.ok){
+         toast.error("Failed to fetch");
+      }
+
+      const data = await response.json();
+
+      const normalized = data.threads.map((t: any) => ({
+        id: t.thread_id,
+        title: t.title,
+        detailedIntelligence: t.detailed_intelligence,
+        author: {
+          name: t.author?.name
+        },
+        timestamp: new Date(t.created_at),
+        initialVotes: 0,
+        initialComments: 0,
+        comments: []
+
+      }));
+      setPosts(normalized);
+    } catch (error) {
+      toast.error(error)
+    }
   };
+
+  fetchThreads();
+}, []);
 
   return (
     <div className="container mx-auto px-4 py-8 grid-bg min-h-screen relative">
@@ -239,11 +280,11 @@ export default function Zone() {
                 <CardContent className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground">Topic Title</label>
-                    <Input id="t-title" placeholder="e.g., Potential vulnerability in API" className="glass bg-secondary/10 border-primary/20 h-9" />
+                    <Input id="title" placeholder="e.g., What is social engineering" className="glass bg-secondary/10 border-primary/20 h-9" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground">Detailed Intelligence</label>
-                    <textarea id="t-summary" className="w-full rounded-md border border-primary/20 bg-secondary/10 p-3 text-sm focus:ring-1 focus:ring-primary outline-none min-h-[100px]" placeholder="Describe the findings..." />
+                    <textarea id="detailedIntelligence" className="w-full rounded-md border border-primary/20 bg-secondary/10 p-3 text-sm focus:ring-1 focus:ring-primary outline-none min-h-[100px]" placeholder="Describe the findings..." />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {/* <div className="space-y-1">
@@ -259,10 +300,10 @@ export default function Zone() {
                 <CardFooter className="flex justify-end gap-3">
                   <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
                   <Button variant="cyber" className="px-6 font-bold uppercase tracking-wider h-9" onClick={() => {
-                    const title = (document.getElementById('t-title') as HTMLInputElement).value;
-                    const summary = (document.getElementById('t-summary') as HTMLTextAreaElement).value;
-                    const risk = (document.getElementById('t-risk') as HTMLSelectElement).value;
-                    if(title && summary) handleCreateThread(title, summary, risk);
+
+                    const title = (document.getElementById('title') as HTMLInputElement).value;
+                    const detailedIntelligence = (document.getElementById('detailedIntelligence') as HTMLTextAreaElement).value;
+                    if(title && detailedIntelligence) handleCreateThread(title, detailedIntelligence);
                   }}>Broadcast Thread</Button>
                 </CardFooter>
               </Card>

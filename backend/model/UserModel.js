@@ -61,6 +61,12 @@ export default (sequelize, DataTypes) => {
       as: "scamVotes",
       onDelete: "CASCADE",
     });
+
+    User.hasMany(models.Thread, {
+      foreignKey: "thread_user_id",
+      as: "threads",
+      onDelete: "CASCADE",
+    });
   };
 
   return User;

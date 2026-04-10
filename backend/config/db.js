@@ -5,6 +5,7 @@ import createConfirmEmailModel from "../model/ConfirmEmailModel.js";
 import createScamScanModel from "../model/ScamScanModel.js";
 import createScamModel from "../model/ScamModel.js";
 import createScamVoteModel from "../model/ScamVoteModel.js";
+import createThreadModel from "../model/ThreadModel.js";
 
 dotenv.config();
 
@@ -81,6 +82,7 @@ db.ConfirmEmail = createConfirmEmailModel(sequelize, DataTypes);
 db.ScamScan = createScamScanModel(sequelize, DataTypes);
 db.Scam = createScamModel(sequelize, DataTypes);
 db.ScamVote = createScamVoteModel(sequelize, DataTypes);
+db.Thread = createThreadModel(sequelize, DataTypes);
 
 for (const value of Object.values(db)) {
   if (value?.associate) {
@@ -93,5 +95,6 @@ export const ConfirmEmail = db.ConfirmEmail;
 export const ScamScan = db.ScamScan;
 export const Scam = db.Scam;
 export const ScamVote = db.ScamVote;
+export const Thread = db.Thread;
 export { sequelize, db };
 export default sequelize;
