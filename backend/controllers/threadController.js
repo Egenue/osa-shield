@@ -200,7 +200,21 @@ export const threadLikeAndDislikesCountsController = async(request, reply) => {
             dislikes,
             totalScore: likes - dislikes
         });
-        
+
+    } catch (error) {
+        return reply.code(500).send({message: "Internal server error"});
+        console.log(error);
+    }
+}
+
+export const getThreadCommentsCountController = async(request, reply) => {
+    try {
+        const {threadId} = request.params;
+        const count = await ThreadComments.count({
+            where: {thread_id: threadId}
+        });
+
+        return reply.code(200).send({count});
     } catch (error) {
         return reply.code(500).send({message: "Internal server error"});
         console.log(error);

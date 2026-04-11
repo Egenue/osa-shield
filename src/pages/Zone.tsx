@@ -19,7 +19,7 @@ import { comment } from 'postcss';
 
 
 
-// --- SUB-COMPONENT: THREAD VIEW (COMMENT SECTION) ---
+
 function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => void, onAddComment: (postId: string, text: string) => void }) {
   const [replyText, setReplyText] = useState('');
 
@@ -127,9 +127,10 @@ function ThreadView({ post, onBack, onAddComment }: { post: any, onBack: () => v
   );
 }
 
-// --- SUB-COMPONENT: POST CARD ---
+
 function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => void }) {
   const [votes, setVotes] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
   const [voteType, setVoteType] = useState<'up' | 'down' | null>(null);
 
   const handleVote = async(type: 'like' | 'dislike') => {
@@ -157,12 +158,28 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
       const res = await fetch(`${API_BASE_URL}/thread/${post.id}/votes/count`);
       const data = await res.json();
       if(res.ok) setVotes(data.totalScore);
+
+      const commentResponse = await fetch(`${API_BASE_URL}/thread/${post.id}/comments/count`);
+      const commentData = await commentResponse.json();
+      if(commentResponse.ok) setCommentCount(commentData.count); 
     };
     getCounts();
   }, [post.id]);
 
+  
+
   function handleCopyLink(){
-    toast.success("Link copied successfully");
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}?thread=${post.id}`;
+
+    navigator.clipboard.writeText(shareUrl)
+    .then(() => {
+      toast.success("Link copied successfully");
+    })
+    .catch(() => {
+      toast.error("Failed to copy link");
+    });
+    
   }
 
   
@@ -190,7 +207,7 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
           </CardContent>
           <CardFooter className="p-4 pt-0 flex justify-between items-center">
             <Button variant="ghost" size="sm" onClick={onOpenComments} className="h-8 gap-2 text-xs text-muted-foreground hover:text-primary px-0">
-              <MessageSquare className="h-4 w-4" /> {post.comments.length} Comments
+              <MessageSquare className="h-4 w-4" /> {commentCount} Comments
             </Button>
 
             <Button variant="ghost" size="sm" onClick={handleCopyLink} className='h-8 gap-2 text-xs text-muted-foreground hover:text-primary px-0'>
@@ -210,7 +227,7 @@ function PostCard({ post, onOpenComments }: { post: any, onOpenComments: () => v
   );
 }
 
-// --- MAIN ZONE PAGE ---
+
 export default function Zone() {
   const [posts, setPosts] = useState<any[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -384,7 +401,7 @@ useEffect(() => {
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight">Threat <span className="text-primary text-glow">Zone</span></h1>
+          <h1 className="font-display text-4xl font-bold tracking-tight">OSA <span className="text-primary text-glow">Zone</span></h1>
           <p className="text-muted-foreground mt-1 text-sm italic">Assembly consensus and community discussions.</p>
         </div>
         {!selectedPostId && (
@@ -410,11 +427,13 @@ useEffect(() => {
         {!selectedPostId && (
           <div className="space-y-6">
             <Card className="glass border-primary/20 bg-secondary/10">
-              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /> OSA Objectives</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /> What is OSA ZONE ?</CardTitle></CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-xs text-foreground/70">
-                  <li className="flex gap-2"><span>•</span> Verify NPM supply chain backdoor</li>
-                  <li className="flex gap-2"><span>•</span> Review Governance RFC #44</li>
+                  <li className="flex gap-2"><span>•</span> Zone is a space for connecting community thoughts to raise awareness.</li>
+                  <li className="flex gap-2"><span>•</span> No count on dislikes don't shy away (count on impressions!).</li>
+                  <li className="flex gap-2"><span>•</span> Let's shape the community together.</li>
+                  <li className="flex gap-2"><span>•</span> Ongea yako yote!</li>
                 </ul>
               </CardContent>
             </Card>
