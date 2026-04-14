@@ -7,6 +7,9 @@ dotenv.config();
 
 const email_user = process.env.EMAIL_USER;
 const email_pass = process.env.EMAIL_PASS;
+const api_key = process.env.EMAIL_SENDER_APT_KEY;
+const api_url = process.env.EMAIL_API_URL;
+
 
 
 
@@ -48,12 +51,21 @@ export async function sendConfirmEmail(recipientEmail, confirmLink) {
   const message = buildConfirmEmailMessage(recipientEmail, confirmLink);
 
   try {
-    await transporter.sendMail({
-      from: "OSA",
-      to: recipientEmail,
-      subject: `Confirm Email for verification`,
-      html: message.html,
+
+    await fetch(api_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${api_key}`,
+      },
+      body: JSON.stringify({
+        from: email_user,
+        to: recipientEmail,
+        subject: "OSA Confirm email no reply",
+        html: message.html,
+      })
     });
+   
   } catch (error) {
     console.log(error)
   }
