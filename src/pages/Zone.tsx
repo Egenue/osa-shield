@@ -345,7 +345,7 @@ useEffect(() => {
       }));
       setPosts(normalized);
     } catch (error) {
-      toast.error(error)
+      toast.error(error.message || "Failed to get threads")
     }
   };
 
