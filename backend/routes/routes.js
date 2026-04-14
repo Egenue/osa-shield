@@ -184,7 +184,7 @@ export default async function routes(fastify) {
 
   fastify.get(
     "/created-threads",{
-      preHandler: [requireDatabaseReady, requireAuthentication]
+      preHandler: [requireDatabaseReady]
     },
     getCreatedThreadsController
   )
