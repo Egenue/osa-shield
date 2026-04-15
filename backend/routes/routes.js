@@ -6,6 +6,8 @@ import {
   meController,
   registerController,
   verifyEmailController,
+  sendResetPasswordController,
+  resetPasswordPasswordController
 } from "../controllers/userController.js";
 import { healthController } from "../controllers/systemController.js";
 import {
@@ -98,7 +100,9 @@ export default async function routes(fastify) {
     "/thread/:threadId/comments",
     "/thread/:threadId/thread-likes",
     "/thread/:threadId/votes/count",
-    "/thread/:threadId/comments/count"
+    "/thread/:threadId/comments/count",
+    "/send-reset-email",
+    "/resetPassword"
   ];
 
   for (const path of preflightPaths) {
@@ -224,6 +228,20 @@ fastify.get(
     preHandler: [requireDatabaseReady]
   },
   getThreadCommentsCountController
+)
+fastify.post(
+  "/send-reset-email",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  sendResetPasswordController
+)
+fastify.post(
+  "/resetPassword",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  resetPasswordPasswordController
 )
 
 };

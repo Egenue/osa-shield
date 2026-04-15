@@ -17,7 +17,10 @@ import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/AdminPage";
 import NotFound from "@/pages/NotFound";
 import Zone from "./pages/Zone";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { useAuthStore } from "@/stores/authStore";
+
 
 const queryClient = new QueryClient();
 
@@ -50,6 +53,8 @@ const App = () => {
               <Route path="/verification" element={<Verification />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/community" element={<CommunityPage />} />
+              <Route path="/forgot-password" element={<ForgotPassword/>}/>
+              <Route path="/reset-password" element={<ResetPassword/>}/>
               <Route path="/threats" element={<ThreatMapPage />} />
               <Route path="/report" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

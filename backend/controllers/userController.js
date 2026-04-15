@@ -1,10 +1,16 @@
 import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import { ConfirmEmail, User } from "../config/db.js";
-import { sendConfirmEmail } from "../data/emailSender.js";
+import { sendConfirmEmail, sendResetPasswordMail } from "../data/emailSender.js";
 import { ensureSessionLocation, getSessionLocationLabel } from "../services/sessionLocationService.js";
 import { getUserSummary } from "../services/userMetricsService.js";
+import dotenv from 'dotenv';
+import { redirect } from "react-router-dom";
+import { Op, where } from "sequelize";
 
+dotenv.config();
+
+const resetPasswordLink = process.env.RESET_LINK;
 const VERIFICATION_TTL_MINUTES = Number(process.env.VERIFICATION_TTL_MINUTES || 45);
 const isDemoModeEnabled = String(process.env.DEMO_MODE ?? "false").toLowerCase() === "true";
 
@@ -312,3 +318,59 @@ export const logoutController = async (request, reply) => {
     return reply.code(500).send({ message: "Internal server error" });
   }
 };
+
+
+export const sendResetPasswordController = async(request, reply) => {
+
+   const { email } = request.body;
+    const user = await User.findOne({
+      email
+    });
+
+    if(!user){
+      return reply.send({message: "User with this email address does not exist!"});
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const expiry = new Date(Date.now() + 3600000);
+
+    user.resetToken = token;
+    user.resetTokenExpiry = expiry;
+    await user.save();
+
+    const redirectLink = `${resetPasswordLink}?token=${token}`;
+
+  try {
+    await sendResetPasswordMail(redirectLink, email);
+    return reply.send({message: "Email reset sent successfully, check email or junk!"});
+  } catch (error) {
+    console.log(error);
+    return reply.code(500).send({message: "Internal server error"});
+  }
+}
+
+export const resetPasswordPasswordController = async(request, reply) =>{
+  
+  const user = await User.findOne({
+    where: {
+      resetToken: token,
+      resetTokenExpiry: { [Op.gt]: new Date() }
+    }
+  });
+
+  if(!user){
+    return reply.status(401).send({message: "Invalid or expired session token"});
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  await user.update({
+    password: hashedPassword,
+    resetToken: null,
+    resetTokenExpiry: null
+  });
+
+  return reply.send({ message: "Password updated successfully" });
+
+}

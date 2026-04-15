@@ -1,3 +1,5 @@
+import { type } from "os";
+
 export default (sequelize, DataTypes) => {
   const User = sequelize.define(
     "User",
@@ -19,6 +21,14 @@ export default (sequelize, DataTypes) => {
       password: {
         type: DataTypes.TEXT,
         allowNull: false,
+      },
+      resetToken: {
+        type: DataTypes.STRING(255),
+        defaultValue: null,
+      },
+      resetTokenExpiry: {
+        type: DataTypes.DATE,
+        defaultValue: null,
       },
       is_verified: {
         type: DataTypes.BOOLEAN,

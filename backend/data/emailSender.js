@@ -2,6 +2,7 @@ import { resolve4 } from "node:dns/promises";
 import net from "node:net";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { text } from "node:stream/consumers";
 
 dotenv.config();
 
@@ -46,6 +47,27 @@ function buildConfirmEmailMessage(recipientEmail, confirmLink) {
   };
 }
 
+function buildResetPassordMail(email, redirectLink){
+  const htmlMessage = `
+  <html>
+    <body>
+      <p>Friend, </p>
+      <p>This a reset password bypass</p>
+      <p>It will expire in 60 minutes be fast</p>
+      <p><a href=${redirectLink}></a>Reset</p>
+      <p>If you never requested email contact us for instant account deletion lol!</p>
+      <p>Thank you friend</p>
+    </body>
+  </html>
+  `;
+
+  return {
+    to: receiverMail,
+    subject: "Reset Password",
+    text: `Reset your password friend ${htmlMessage}`,
+    htmlMessage, 
+  }
+}
 
 export async function sendConfirmEmail(recipientEmail, confirmLink) {
   const message = buildConfirmEmailMessage(recipientEmail, confirmLink);
@@ -70,4 +92,26 @@ export async function sendConfirmEmail(recipientEmail, confirmLink) {
     console.log(error)
   }
 
+}
+
+export async function sendResetPasswordMail(email, redirectLink) {
+  buildResetPassordMail(email, redirectLink);
+  try {
+    await fetch(api_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${api_key}`,
+      },
+      body: JSON.stringify({
+        from: email_user,
+        to: email,
+        subject: "OSA reset password",
+        html: htmlMessage.html
+      })
+    });
+  } catch (error) {
+    console.log(error);
+  }
+  
 }
