@@ -95,7 +95,7 @@ export async function sendConfirmEmail(recipientEmail, confirmLink) {
 }
 
 export async function sendResetPasswordMail(email, redirectLink) {
-  buildResetPassordMail(email, redirectLink);
+  const message = buildResetPassordMail(email, redirectLink);
   try {
     await fetch(api_url, {
       method: 'POST',
@@ -107,7 +107,7 @@ export async function sendResetPasswordMail(email, redirectLink) {
         from: email_user,
         to: email,
         subject: "OSA reset password",
-        html: htmlMessage.html
+        html: message.html,
       })
     });
   } catch (error) {
