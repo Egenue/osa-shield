@@ -40,7 +40,7 @@ export default function ForgotPassword() {
 
       if (response.ok) {
         setIsSent(true);
-        toast.success("Reset link broadcasted to your inbox");
+        toast.success("Reset link sent to your email");
       } else {
         throw new Error(data.message || "Identification failed");
       }
