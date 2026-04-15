@@ -64,7 +64,7 @@ function buildResetPassordMail(email, redirectLink){
   return {
     to: email,
     subject: "Reset Password",
-    text: `Reset your password friend ${htmlMessage}`,
+    text: `Reset your password friend ${redirectLink}`,
     html, 
   }
 }
