@@ -48,7 +48,7 @@ function buildConfirmEmailMessage(recipientEmail, confirmLink) {
 }
 
 function buildResetPassordMail(email, redirectLink){
-  const htmlMessage = `
+  const html = `
   <html>
     <body>
       <p>Friend, </p>
@@ -65,7 +65,7 @@ function buildResetPassordMail(email, redirectLink){
     to: email,
     subject: "Reset Password",
     text: `Reset your password friend ${htmlMessage}`,
-    htmlMessage, 
+    html, 
   }
 }
 
