@@ -324,7 +324,9 @@ export const sendResetPasswordController = async(request, reply) => {
 
    const { email } = request.body;
     const user = await User.findOne({
-      email
+      where: {
+        email: email
+      }
     });
 
     if(!user){
@@ -335,9 +337,11 @@ export const sendResetPasswordController = async(request, reply) => {
 
     const expiry = new Date(Date.now() + 3600000);
 
-    user.resetToken = token;
-    user.resetTokenExpiry = expiry;
-    await user.save();
+    await user.update({
+      resetToken: token,
+      resetTokenExpiry: expiry
+    });
+    
 
     const redirectLink = `${resetPasswordLink}?token=${token}`;
 
@@ -351,6 +355,8 @@ export const sendResetPasswordController = async(request, reply) => {
 }
 
 export const resetPasswordPasswordController = async(request, reply) =>{
+
+  const {token, password} = request.body;
   
   const user = await User.findOne({
     where: {

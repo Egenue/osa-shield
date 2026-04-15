@@ -25,10 +25,12 @@ export default (sequelize, DataTypes) => {
       resetToken: {
         type: DataTypes.STRING(255),
         defaultValue: null,
+        field: 'resetToken',
       },
       resetTokenExpiry: {
         type: DataTypes.DATE,
         defaultValue: null,
+        field: 'resetTokenExpiry',
       },
       is_verified: {
         type: DataTypes.BOOLEAN,
