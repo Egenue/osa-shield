@@ -1,4 +1,5 @@
 import requireAuthentication from "../middleware/requireAuthentication.js";
+import { checkPassword } from '../services/passwordCheck.js';
 import requireDatabaseReady from "../middleware/requireDatabaseReady.js";
 import {
   loginController,
@@ -118,6 +119,26 @@ export default async function routes(fastify) {
       return reply.code(204).send();
     });
   }
+fastify.post('/checkPassword', async (request, reply) => {
+    try {
+        const { password } = request.body;
+
+        const result = await checkPassword(password);   
+
+        return result;  
+    } 
+    catch (e) {
+        if (e.message === "Password is required") {
+            return reply.code(400).send({ error: "Password is required" });
+        }
+
+       
+        return reply.code(500).send({ 
+            error: "Internal Server Error",
+            message: e.message 
+        });
+    }
+});
 
   fastify.get("/health", healthController);
   fastify.post(

@@ -1,8 +1,13 @@
-import Fastify from "fastify";
+
+
+/* 
+import Fastify, { fastify } from "fastify";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
 import session from "@fastify/session";
 import routes from "./routes/routes.js";
+
+
 import sequelize from "./config/db.js";
 import { ensureFeatureColumns } from "./config/ensureSchema.js";
 import { resolveSessionCookieConfig, resolveTrustProxy } from "./config/sessionConfig.js";
@@ -68,7 +73,7 @@ async function initializeDatabase() {
   } finally {
     isConnectingToDatabase = false;
   }
-}
+} 
 
 const start = async () => {
   try {
@@ -98,4 +103,18 @@ const start = async () => {
   }
 };
 
-start();
+start(); */
+
+
+//disabling database for testing.
+
+import fastify from 'fastify';
+import routes from "./routes/routes.js";
+
+const app = fastify();
+
+app.register(routes);
+
+app.listen({ port: process.env.PORT }, () => {
+  console.log(`Server running on http://localhost:${process.env.PORT}`);
+});
