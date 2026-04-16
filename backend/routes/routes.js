@@ -15,17 +15,21 @@ import {
   createScamReportController,
   getProfileActivityController,
   getReportedScamsController,
+  publishScanToCommunityController,
   voteOnScamController,
 } from "../controllers/scamController.js";
 import { createThreadController,
+  deleteThreadCommentController,
+  deleteThreadController,
   getCreatedThreadsController,
   createThreadCommentController,
   getThreadCommentController,
   threadLikesController,
   threadLikeAndDislikesCountsController,
-  getThreadCommentsCountController
+  getThreadCommentsCountController,
+  updateThreadCommentController,
+  updateThreadController
  } from "../controllers/threadController.js";
-import fastify from "fastify";
 
 const DEFAULT_ALLOWED_ORIGINS = "http://localhost:8080,http://localhost:8081,http://localhost:5173";
 
@@ -70,7 +74,7 @@ function applyCorsHeaders(request, reply) {
   }
 
   reply.header("Access-Control-Allow-Credentials", "true");
-  reply.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
   reply.header(
     "Access-Control-Allow-Headers",
     requestedHeaders || "Content-Type, Authorization"
@@ -93,10 +97,13 @@ export default async function routes(fastify) {
     "/scams/analyze",
     "/scams/report",
     "/scams/:scamId/vote",
+    "/scans/:scanId/community",
     "/profile/activity",
     "/thread",
+    "/thread/:threadId",
     "/created-threads",
     "/thread/:threadId/comment",
+    "/thread/:threadId/comment/:commentId",
     "/thread/:threadId/comments",
     "/thread/:threadId/thread-likes",
     "/thread/:threadId/votes/count",
@@ -171,6 +178,13 @@ export default async function routes(fastify) {
     },
     voteOnScamController
   );
+  fastify.post(
+    "/scans/:scanId/community",
+    {
+      preHandler: [requireDatabaseReady, requireAuthentication],
+    },
+    publishScanToCommunityController
+  );
   fastify.get(
     "/profile/activity",
     {
@@ -184,6 +198,20 @@ export default async function routes(fastify) {
       preHandler: [requireDatabaseReady, requireAuthentication]
     },
     createThreadController
+  );
+  fastify.patch(
+    "/thread/:threadId",
+    {
+      preHandler: [requireDatabaseReady, requireAuthentication]
+    },
+    updateThreadController
+  );
+  fastify.delete(
+    "/thread/:threadId",
+    {
+      preHandler: [requireDatabaseReady, requireAuthentication]
+    },
+    deleteThreadController
   );
 
   fastify.get(
@@ -200,6 +228,20 @@ export default async function routes(fastify) {
   },
   createThreadCommentController
 )
+fastify.patch(
+  "/thread/:threadId/comment/:commentId",
+  {
+    preHandler: [requireDatabaseReady, requireAuthentication]
+  },
+  updateThreadCommentController
+)
+fastify.delete(
+  "/thread/:threadId/comment/:commentId",
+  {
+    preHandler: [requireDatabaseReady, requireAuthentication]
+  },
+  deleteThreadCommentController
+)
 fastify.get(
   "/thread/:threadId/comments",
   {
@@ -210,7 +252,7 @@ fastify.get(
 fastify.post(
   "/thread/:threadId/thread-likes",
   {
-    preHandler: [requireAuthentication]
+    preHandler: [requireDatabaseReady, requireAuthentication]
   },
   threadLikesController
 )
@@ -245,4 +287,3 @@ fastify.post(
 )
 
 };
-

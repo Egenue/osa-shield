@@ -14,6 +14,10 @@ const resetPasswordLink = process.env.RESET_LINK;
 const VERIFICATION_TTL_MINUTES = Number(process.env.VERIFICATION_TTL_MINUTES || 45);
 const isDemoModeEnabled = String(process.env.DEMO_MODE ?? "false").toLowerCase() === "true";
 
+function isEmailServiceConfigured() {
+  return Boolean(process.env.EMAIL_USER && process.env.EMAIL_SENDER_APT_KEY && process.env.EMAIL_API_URL);
+}
+
 async function toPublicUser(user, request) {
   const summary = await getUserSummary(user.user_id);
 
@@ -346,7 +350,7 @@ export const sendResetPasswordController = async(request, reply) => {
     const redirectLink = `${resetPasswordLink}?token=${token}`;
 
   try {
-    await sendResetPasswordMail(redirectLink, email);
+    await sendResetPasswordMail(email, redirectLink);
     return reply.send({message: "Email reset sent successfully, check email or junk!"});
   } catch (error) {
     console.log(error);

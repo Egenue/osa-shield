@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Shield, Activity, FileText, User, MapPin } from 'lucide-react';
+import { Shield, Activity, FileText, User, MapPin, Send, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiFetch, type ProfileActivity } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
   const [history, setHistory] = useState<ProfileActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [postingScanId, setPostingScanId] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -36,6 +38,38 @@ export default function ProfilePage() {
       ignore = true;
     };
   }, []);
+
+  const postScanToCommunity = async (scanId: string) => {
+    setPostingScanId(scanId);
+
+    try {
+      const data = await apiFetch<{
+        message: string;
+        scam: { id: string };
+      }>(`/scans/${scanId}/community`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+
+      setHistory((current) =>
+        current.map((item) =>
+          item.id === scanId
+            ? {
+                ...item,
+                canPostToCommunity: false,
+                postedToCommunity: true,
+                communityScamId: data.scam.id,
+              }
+            : item,
+        ),
+      );
+      toast.success(data.message || 'Posted to community.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not post scan to community.');
+    } finally {
+      setPostingScanId(null);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -89,7 +123,7 @@ export default function ProfilePage() {
           )}
 
           {history.map((item) => (
-            <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+            <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
               <div className="flex items-center gap-3">
                 {item.type === 'scan' ? (
                   <Activity className="h-4 w-4 text-primary" />
@@ -104,16 +138,40 @@ export default function ProfilePage() {
                   {item.details && (
                     <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.details}</div>
                   )}
+                  {item.contentPreview && (
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      {item.contentPreview}
+                    </div>
+                  )}
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded ${
-                item.status === 'High Risk' ? 'bg-destructive/10 text-destructive' :
-                item.status === 'Verified' ? 'bg-success/10 text-success' :
-                item.status === 'Low Risk' ? 'bg-primary/10 text-primary' :
-                'bg-warning/10 text-warning'
-              }`}>
-                {item.status}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                {item.postedToCommunity && (
+                  <span className="inline-flex items-center gap-1 rounded bg-success/10 px-2 py-1 text-xs text-success">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Posted
+                  </span>
+                )}
+                {item.canPostToCommunity && (
+                  <Button
+                    size="sm"
+                    variant="cyber-outline"
+                    onClick={() => postScanToCommunity(item.id)}
+                    disabled={postingScanId === item.id}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    {postingScanId === item.id ? 'Posting...' : 'Post to Community'}
+                  </Button>
+                )}
+                <span className={`text-xs px-2 py-1 rounded ${
+                  item.status === 'High Risk' ? 'bg-destructive/10 text-destructive' :
+                  item.status === 'Verified' ? 'bg-success/10 text-success' :
+                  item.status === 'Low Risk' ? 'bg-primary/10 text-primary' :
+                  'bg-warning/10 text-warning'
+                }`}>
+                  {item.status}
+                </span>
+              </div>
             </div>
           ))}
         </div>

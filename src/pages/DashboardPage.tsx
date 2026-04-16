@@ -71,9 +71,7 @@ function buildRecommendations(result: ScamAnalysisResponse, tab: 'text' | 'url')
           ? 'Do not open the site or enter any password, OTP, or payment information.'
           : 'Do not reply, click links, or share any code or money with the sender.',
         'Verify the request through an official contact channel you already trust.',
-        result.stored_in_community
-          ? 'This sample has already been added to the community feed with its location for other users to review.'
-          : 'Report this sample so other users can review it in the community feed.',
+        'This scan stays private by default. Post it from your profile if you want the community to review it.',
       ]
     : [
         'No strong scam signal was found, but unexpected requests still need manual verification.',
@@ -139,11 +137,7 @@ export default function DashboardPage() {
       await checkSession();
 
       if (analysis.is_scam) {
-        toast.warning(
-          analysis.stored_in_community
-            ? 'Threat detected and saved to the community feed.'
-            : 'Threat detected.',
-        );
+        toast.warning('Threat detected. The scan is private until you post it from your profile.');
       } else {
         toast.success('Analysis completed.');
       }
@@ -332,11 +326,11 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="mt-4 w-full rounded-xl border border-border/60 bg-secondary/50 p-4 text-sm text-muted-foreground">
-                    {result.stored_in_community ? (
+                    {result.is_scam ? (
                       <div className="space-y-2">
-                        <div className="font-semibold text-foreground">Shared with the community feed</div>
+                        <div className="font-semibold text-foreground">Private scan saved</div>
                         <div>
-                          This flagged sample was saved with its detected location so other users can review it.
+                          This flagged sample was saved to your activity history. You choose whether to post it to the community.
                         </div>
                       </div>
                     ) : (
@@ -421,9 +415,9 @@ export default function DashboardPage() {
                 ))}
               </ul>
 
-              {result.stored_in_community ? (
-                <Button variant="destructive" className="mt-5 w-full" onClick={() => navigate('/community')}>
-                  <AlertTriangle className="h-4 w-4" /> View Community Report
+              {result.is_scam ? (
+                <Button variant="destructive" className="mt-5 w-full" onClick={() => navigate('/profile')}>
+                  <AlertTriangle className="h-4 w-4" /> Post from Profile
                 </Button>
               ) : (
                 <Button variant="cyber-outline" className="mt-5 w-full" onClick={() => navigate('/report')}>

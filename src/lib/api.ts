@@ -88,8 +88,44 @@ export type ProfileActivity = {
   type: 'scan' | 'report';
   label: string;
   status: string;
+  riskLevel?: 'low' | 'medium' | 'high';
+  inputType?: 'text' | 'url';
   details: string | null;
+  contentPreview?: string;
+  canPostToCommunity?: boolean;
+  postedToCommunity?: boolean;
+  communityScamId?: string | null;
   createdAt: string;
+};
+
+export type ZoneThread = {
+  id: string;
+  thread_id?: string;
+  thread_user_id?: string;
+  title: string;
+  detailed_intelligence: string;
+  comments_disabled: boolean;
+  created_at: string;
+  author: {
+    id?: string;
+    name?: string;
+  } | null;
+};
+
+export type ZoneComment = {
+  id: string;
+  comment_id?: string;
+  thread_id: string;
+  user_id: string;
+  parent_comment_id: string | null;
+  comment: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  user: {
+    id?: string;
+    name?: string;
+  } | null;
 };
 
 export async function readErrorMessage(response: Response): Promise<string> {

@@ -142,6 +142,13 @@ function buildTextVerdict(analysis, normalizedInputType) {
   };
 }
 
+function isRiskyScan(scan) {
+  const threshold = Number(scan.threshold ?? 0.3);
+  const score = Number(scan.spam_probability ?? 0);
+
+  return String(scan.prediction ?? "").toLowerCase() === "spam" || score >= threshold;
+}
+
 export const analyzeScamController = async (request, reply) => {
   try {
     const userId = request.session?.userId;
@@ -189,24 +196,6 @@ export const analyzeScamController = async (request, reply) => {
       explanation: analysis.explanation,
     });
 
-    let storedScam = null;
-
-    if (analysis.isScam) {
-      storedScam = await Scam.create({
-        reporter_user_id: userId,
-        source_scan_id: scan.scan_id,
-        type: normalizeReportType(normalizedInputType),
-        source: "analysis",
-        content: normalizedContent,
-        prediction: analysis.prediction,
-        spam_probability: analysis.spamProbability,
-        threshold: analysis.threshold,
-        triggers: analysis.triggers,
-        explanation: analysis.explanation,
-        location_label: getSessionLocationLabel(request),
-      });
-    }
-
     return reply.code(200).send({
       prediction: analysis.prediction,
       spam_probability: analysis.spamProbability,
@@ -220,9 +209,92 @@ export const analyzeScamController = async (request, reply) => {
       analysis_mode: feedback.analysisMode,
       url_details: feedback.urlDetails,
       scan_id: scan.scan_id,
-      stored_scam_id: storedScam?.scam_id ?? null,
-      stored_in_community: Boolean(storedScam),
+      stored_scam_id: null,
+      stored_in_community: false,
       location: getSessionLocationLabel(request),
+    });
+  } catch (error) {
+    return handleControllerError(reply, error);
+  }
+};
+
+export const publishScanToCommunityController = async (request, reply) => {
+  try {
+    const userId = request.session?.userId;
+    const { scanId } = request.params ?? {};
+    const { anonymous } = request.body ?? {};
+
+    if (!userId) {
+      return reply.code(401).send({ message: "Unauthorized" });
+    }
+
+    if (!scanId) {
+      return reply.code(400).send({ message: "Scan id is required" });
+    }
+
+    const scan = await ScamScan.findOne({
+      where: {
+        scan_id: scanId,
+        user_id: userId,
+      },
+    });
+
+    if (!scan) {
+      return reply.code(404).send({ message: "Scan not found" });
+    }
+
+    if (!isRiskyScan(scan)) {
+      return reply
+        .code(400)
+        .send({ message: "Only risky scans can be posted to the community." });
+    }
+
+    const existingReport = await Scam.findOne({
+      where: {
+        reporter_user_id: userId,
+        source_scan_id: scan.scan_id,
+      },
+    });
+
+    if (existingReport) {
+      return reply.code(200).send({
+        message: "This scan is already posted to the community.",
+        alreadyPosted: true,
+        scam: {
+          id: existingReport.scam_id,
+          type: existingReport.type,
+          content: existingReport.content,
+          location: existingReport.location_label,
+        },
+      });
+    }
+
+    ensureSessionLocation(request);
+
+    const scam = await Scam.create({
+      reporter_user_id: userId,
+      source_scan_id: scan.scan_id,
+      type: normalizeReportType(scan.input_type),
+      source: "analysis",
+      content: scan.content,
+      prediction: scan.prediction,
+      spam_probability: scan.spam_probability,
+      threshold: scan.threshold,
+      triggers: scan.triggers,
+      explanation: scan.explanation,
+      location_label: getSessionLocationLabel(request),
+      is_anonymous: Boolean(anonymous),
+    });
+
+    return reply.code(201).send({
+      message: "Scan posted to the community.",
+      alreadyPosted: false,
+      scam: {
+        id: scam.scam_id,
+        type: scam.type,
+        content: scam.content,
+        location: scam.location_label,
+      },
     });
   } catch (error) {
     return handleControllerError(reply, error);

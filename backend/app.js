@@ -4,6 +4,7 @@ import cookie from "@fastify/cookie";
 import session from "@fastify/session";
 import routes from "./routes/routes.js";
 import sequelize from "./config/db.js";
+import { ensureFeatureColumns } from "./config/ensureSchema.js";
 import { resolveSessionCookieConfig, resolveTrustProxy } from "./config/sessionConfig.js";
 import {
   isDatabaseReady,
@@ -53,6 +54,7 @@ async function initializeDatabase() {
 
     if (!databaseSchemaSynced) {
       await sequelize.sync();
+      await ensureFeatureColumns(sequelize);
       databaseSchemaSynced = true;
     }
 

@@ -24,11 +24,24 @@ export default (sequelize, DataTypes)=>{
                     key: "user_id",
                 },
             },
+            parent_comment_id: {
+                type: DataTypes.UUID,
+                allowNull: true,
+            },
             comment: {
                 type: DataTypes.TEXT,
                 allowNull: false,
             },
+            is_deleted: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: false,
+            },
             created_at: {
+                type: DataTypes.DATE,
+                defaultValue: DataTypes.NOW,
+            },
+            updated_at: {
                 type: DataTypes.DATE,
                 defaultValue: DataTypes.NOW,
             },
@@ -50,10 +63,20 @@ export default (sequelize, DataTypes)=>{
             onDelete: "CASCADE",
         });
 
-        ThreadComments.belongsTo(models.User, {
+            ThreadComments.belongsTo(models.User, {
             foreignKey: "user_id",
             as: "user",
             onDelete: "CASCADE",
+        });
+
+        ThreadComments.belongsTo(models.ThreadComments, {
+            foreignKey: "parent_comment_id",
+            as: "parent",
+        });
+
+        ThreadComments.hasMany(models.ThreadComments, {
+            foreignKey: "parent_comment_id",
+            as: "replies",
         });
     };
 
