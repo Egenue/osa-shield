@@ -390,22 +390,18 @@ export const deleteThreadCommentController = async (request, reply) => {
       return reply.code(401).send({ message: "Unauthorized" });
     }
 
-    const [thread, existingComment] = await Promise.all([
-      findThreadOrThrow(threadId),
-      ThreadComments.findOne({
-        where: {
-          comment_id: commentId,
-          thread_id: threadId,
-        },
-      }),
-    ]);
+    const existingComment = await ThreadComments.findOne({
+      where: {
+        comment_id: commentId,
+        thread_id: threadId,
+      },
+    });
 
     if (!existingComment) {
       return reply.code(404).send({ message: "Comment not found." });
     }
 
-    const canDelete = existingComment.user_id === userId || thread.thread_user_id === userId;
-    if (!canDelete) {
+    if (existingComment.user_id !== userId) {
       return reply.code(403).send({ message: "You cannot delete this comment." });
     }
 

@@ -111,8 +111,6 @@ function ThreadView({
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
   const currentUserId = user?.id ?? '';
-  const isThreadAuthor = currentUserId === post.author.id;
-
   useEffect(() => {
     let ignore = false;
 
@@ -235,7 +233,7 @@ function ThreadView({
   const renderComment = (comment: CommentItem, depth = 0): JSX.Element => {
     const children = commentsByParent.get(comment.id) ?? [];
     const canEdit = !comment.isDeleted && comment.userId === currentUserId;
-    const canDelete = !comment.isDeleted && (comment.userId === currentUserId || isThreadAuthor);
+    const canDelete = !comment.isDeleted && comment.userId === currentUserId;
     const wasEdited =
       !comment.isDeleted && comment.updatedAt.getTime() - comment.createdAt.getTime() > 1000;
 
