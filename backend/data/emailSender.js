@@ -13,18 +13,30 @@ const api_url = process.env.EMAIL_API_URL;
 
 
 
+async function sendEmails({ to, subject, html, text} ){
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: email_user,
-    pass: email_pass,
-  },
-  tls: {
-    rejectUnauthorized: false
+  try {
+
+    await fetch(api_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${api_key}`,
+      },
+      body: JSON.stringify({
+        from: email_user,
+        to,
+        subject,
+        html,
+        text: text,
+      })
+    });
+
+   
+  } catch (error) {
+    console.log(error);
   }
-});
-
+}
 
 function buildConfirmEmailMessage(recipientEmail, confirmLink) {
   const html = `
@@ -72,46 +84,12 @@ function buildResetPassordMail(email, redirectLink){
 export async function sendConfirmEmail(recipientEmail, confirmLink) {
   const message = buildConfirmEmailMessage(recipientEmail, confirmLink);
 
-  try {
-
-    await fetch(api_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${api_key}`,
-      },
-      body: JSON.stringify({
-        from: email_user,
-        to: recipientEmail,
-        subject: "OSA Confirm email no reply",
-        html: message.html,
-      })
-    });
-   
-  } catch (error) {
-    console.log(error)
-  }
-
+  return await sendEmails(message);
 }
 
 export async function sendResetPasswordMail(email, redirectLink) {
   const message = buildResetPassordMail(email, redirectLink);
-  try {
-    await fetch(api_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${api_key}`,
-      },
-      body: JSON.stringify({
-        from: email_user,
-        to: email,
-        subject: "OSA reset password",
-        html: message.html,
-      })
-    });
-  } catch (error) {
-    console.log(error);
-  }
+  
+  return await sendEmails(message)
   
 }

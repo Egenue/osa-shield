@@ -18,6 +18,14 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) { toast.error('Passwords do not match.'); return; }
+
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{12,}$/;
+
+    if(password && !strongPasswordRegex.test(password) ){ 
+      toast.error("Password must be at least 12 characters and include uppercase, lowercase, numbers, and special characters.");
+      return;
+      }
+      
     try {
       const message = await register(name, email, password);
       toast.success(message);
