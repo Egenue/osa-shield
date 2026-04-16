@@ -66,7 +66,7 @@ function buildResetPassordMail(email, redirectLink){
       <p>Friend, </p>
       <p>This a reset password bypass</p>
       <p>It will expire in 60 minutes be fast</p>
-      <p><a href=${redirectLink}></a>Reset</p>
+      <p><a href=${redirectLink}>Reset</a></p>
       <p>If you never requested email contact us for instant account deletion lol!</p>
       <p>Thank you friend</p>
     </body>
