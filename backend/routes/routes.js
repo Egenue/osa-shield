@@ -110,7 +110,8 @@ export default async function routes(fastify) {
     "/thread/:threadId/votes/count",
     "/thread/:threadId/comments/count",
     "/send-reset-email",
-    "/resetPassword"
+    "/resetPassword",
+    "/checkPassword"
   ];
 
   for (const path of preflightPaths) {
