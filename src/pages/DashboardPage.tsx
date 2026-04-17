@@ -15,6 +15,7 @@ import {
   Shield,
   ShieldAlert,
   Zap,
+  Lock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { apiFetch, type ScamAnalysisResponse } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+
 
 function scoreColor(score: number) {
   if (score >= 75) return 'text-destructive';
@@ -64,11 +66,13 @@ function resultTone(result: ScamAnalysisResponse) {
   };
 }
 
-function buildRecommendations(result: ScamAnalysisResponse, tab: 'text' | 'url') {
+function buildRecommendations(result: ScamAnalysisResponse, tab: 'text' | 'url' | 'password') {
   const baseActions = result.is_scam
     ? [
         tab === 'url'
           ? 'Do not open the site or enter any password, OTP, or payment information.'
+          : tab === 'password'
+          ? 'This password has been leaked. Change it immediately on all linked accounts.'
           : 'Do not reply, click links, or share any code or money with the sender.',
         'Verify the request through an official contact channel you already trust.',
         'This scan stays private by default. Post it from your profile if you want the community to review it.',
@@ -77,6 +81,8 @@ function buildRecommendations(result: ScamAnalysisResponse, tab: 'text' | 'url')
         'No strong scam signal was found, but unexpected requests still need manual verification.',
         tab === 'url'
           ? 'Check the destination domain carefully before opening or signing in.'
+          : tab === 'password'
+          ? 'Password is safe but avoid reusing it across multiple sites'
           : 'Treat urgent requests for money, passwords, or account recovery as suspicious until confirmed.',
         'If anything still feels wrong, submit a manual report for the community.',
       ];
@@ -106,7 +112,7 @@ export default function DashboardPage() {
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<ScamAnalysisResponse | null>(null);
-  const [lastAnalyzedTab, setLastAnalyzedTab] = useState<'text' | 'url'>('text');
+  const [lastAnalyzedTab, setLastAnalyzedTab] = useState<'text' | 'url' | 'password' >('text');
 
   useEffect(() => {
     if (!result) return;
@@ -125,6 +131,39 @@ export default function DashboardPage() {
     setLastAnalyzedTab(activeAnalyzerTab);
 
     try {
+
+      let analysis: ScamAnalysisResponse;
+
+      if (activeAnalyzerTab === 'password') {
+        const pwnedResult = await apiFetch<{breached: boolean; count: number; message: string }>('/checkPassword', {
+          method: 'POST',
+          body: JSON.stringify({ password: input.trim()}),
+        });
+
+        analysis = {
+          is_scam: pwnedResult.breached,
+          risk_level: pwnedResult.breached ? 'high': 'low',
+          verdict_title: pwnedResult.breached ? 'Compromised': 'Secure',
+          verdict_summary: pwnedResult.breached
+          ? 'This password was found in public data breach'
+          : 'No known leaks found for this password',
+          explanation: pwnedResult.message,
+          prediction: pwnedResult.breached ? 'leaked': 'clean',
+          scam_probability: pwnedResult.breached? 1 : 0,
+          threshold: 0.5,
+          location: 'Global Database',
+          analysis_mode: 'password',
+          triggers: pwnedResult.breached ? [{
+            key: 'pwned',
+            label: 'HIBP Breach Found',
+            description: `This password appeared in ${pwnedResult.count} known data breaches.`,
+            matches: []
+          }] : [],
+          scan_id: 'local-check',
+          url_details: null,
+        } as unknown as ScamAnalysisResponse;
+      }else{
+
       const analysis = await apiFetch<ScamAnalysisResponse>('/scams/analyze', {
         method: 'POST',
         body: JSON.stringify({
@@ -141,6 +180,8 @@ export default function DashboardPage() {
       } else {
         toast.success('Analysis completed.');
       }
+      }
+      
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Analysis failed.');
     } finally {
@@ -187,7 +228,7 @@ export default function DashboardPage() {
         </h2>
 
         <div className="mb-4 flex gap-2">
-          {(['text', 'url'] as const).map((tab) => (
+          {(['text', 'url', 'password'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveAnalyzerTab(tab)}
@@ -197,8 +238,11 @@ export default function DashboardPage() {
                   : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
               }`}
             >
-              {tab === 'text' ? <MessageSquare className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-              {tab === 'text' ? 'Text / Message' : 'URL'}
+              {tab === 'text' && <MessageSquare className="h-4 w-4" />}
+              {tab === 'url' && <LinkIcon className="h-4 w-4" />}
+              {tab === 'password' && <Lock className="h-4 w-4" />}
+              {tab === 'text' ? 'Text / Message' : tab === 'url' ? 'URL' : 'Password Checker'}
+             
             </button>
           ))}
         </div>
@@ -210,14 +254,23 @@ export default function DashboardPage() {
             onChange={(event) => setInput(event.target.value)}
             className="mb-4 min-h-[120px] border-border/50 bg-secondary/50"
           />
-        ) : (
+        ) : activeAnalyzerTab === 'url' ? (
           <Input
             placeholder="https://suspicious-link.example.com"
             value={input}
             onChange={(event) => setInput(event.target.value)}
             className="mb-4 border-border/50 bg-secondary/50"
           />
-        )}
+        ) : (
+          <Input
+          type="password"
+          placeholder="In put password"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          className="mb-4 border-border/50 bg-secondary/50"
+          />
+        )
+        }
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <Button variant="cyber" onClick={handleAnalyze} disabled={isAnalyzing || !input.trim()}>

@@ -3,10 +3,10 @@ import { create } from 'zustand';
 interface UIState {
   isMobileMenuOpen: boolean;
   isReportModalOpen: boolean;
-  activeAnalyzerTab: 'text' | 'url';
+  activeAnalyzerTab: 'text' | 'url' | 'password';
   toggleMobileMenu: () => void;
   setReportModalOpen: (open: boolean) => void;
-  setActiveAnalyzerTab: (tab: 'text' | 'url') => void;
+  setActiveAnalyzerTab: (tab: 'text' | 'url' | 'password') => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
