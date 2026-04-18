@@ -124,19 +124,18 @@ fastify.post('/checkPassword', async (request, reply) => {
     try {
         const { password } = request.body;
 
+        if(!password){
+          return reply.code(400).send({message: "Password is required"})
+        }
+
+
         const result = await checkPassword(password);   
 
         return result;  
     } 
     catch (e) {
-      //bad request no here
-      // if no field return 400 before continue
-      
-        if (e.message === "Password is required") {
-            return reply.code(400).send({ error: "Password is required" });
-        }
 
-       
+      console.log(e);
         return reply.code(500).send({ 
             error: "Internal Server Error",
             message: e.message 
