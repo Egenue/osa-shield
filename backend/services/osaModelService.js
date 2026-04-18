@@ -83,7 +83,7 @@ export async function analyzeMessageWithOsaModel(message) {
       );
     }
 
-    const spamProbability = Number(payload?.spam_probability ?? 0);
+    const spamProbability =   Number(payload?.spam_probability ?? 0);
     const threshold = Number(payload?.threshold ?? DEFAULT_THRESHOLD);
     const prediction = String(payload?.prediction ?? "ham").toLowerCase();
     const triggers = Array.isArray(payload?.triggers)
