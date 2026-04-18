@@ -287,9 +287,9 @@ export default function DashboardPage() {
           </Button>
 
           <p className="max-w-2xl text-sm text-muted-foreground">
-            {activeAnalyzerTab === 'url'
+            {(activeAnalyzerTab as string) === 'url'
               ? 'URL analysis now checks the destination structure, DNS behavior, redirects, and other phishing signals before scoring the link.'
-              : activeAnalyzerTab === 'password'
+              : (activeAnalyzerTab as string) === 'password'
               ? 'Password checker is a tool checker if password has been exposed in known breaches'
               : 'Message analysis checks for scam patterns and summarizes the strongest signals in a readable verdict.'}
           </p>
