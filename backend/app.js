@@ -1,5 +1,5 @@
 
-import Fastify, { fastify } from "fastify";
+import Fastify from "fastify";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
 import session from "@fastify/session";

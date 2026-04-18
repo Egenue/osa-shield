@@ -264,7 +264,7 @@ export default function DashboardPage() {
         ) : (
           <Input
           type="password"
-          placeholder="In put password"
+          placeholder="Input password"
           value={input}
           onChange={(event) => setInput(event.target.value)}
           className="mb-4 border-border/50 bg-secondary/50"
@@ -289,6 +289,8 @@ export default function DashboardPage() {
           <p className="max-w-2xl text-sm text-muted-foreground">
             {activeAnalyzerTab === 'url'
               ? 'URL analysis now checks the destination structure, DNS behavior, redirects, and other phishing signals before scoring the link.'
+              : activeAnalyzerTab === 'password'
+              ? 'Password checker is a tool checker if password has been exposed in known breaches'
               : 'Message analysis checks for scam patterns and summarizes the strongest signals in a readable verdict.'}
           </p>
         </div>
