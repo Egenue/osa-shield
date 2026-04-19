@@ -31,6 +31,8 @@ import { createThreadController,
   updateThreadCommentController,
   updateThreadController
  } from "../controllers/threadController.js";
+import { request } from "node:http";
+import { urlCheck } from "../services/urlCheck.js";
 
 const DEFAULT_ALLOWED_ORIGINS = "http://localhost:8080,http://localhost:8081,http://localhost:5173";
 
@@ -111,7 +113,8 @@ export default async function routes(fastify) {
     "/thread/:threadId/comments/count",
     "/send-reset-email",
     "/resetPassword",
-    "/checkPassword"
+    "/checkPassword",
+    "/urlCheck"
   ];
 
   for (const path of preflightPaths) {
@@ -120,6 +123,22 @@ export default async function routes(fastify) {
       return reply.code(204).send();
     });
   }
+
+fastify.get("/urlCheck", async (request, reply) => {
+  try {
+    const { url } = request.query;       
+
+    if (!url) {
+      return reply.code(400).send({ error: "URL query parameter is required" });
+    }
+
+    const result = await urlCheck(url);
+    return result;
+  } catch (e) {
+    console.error(e);
+    return reply.code(500).send({ error: e.message });
+  }
+});
 fastify.post('/checkPassword', async (request, reply) => {
     try {
         const { password } = request.body;
@@ -134,8 +153,14 @@ fastify.post('/checkPassword', async (request, reply) => {
         return result;  
     } 
     catch (e) {
+      //bad request no here
+      // if no field return 400 before continue
+      
+        if (e.message === "Password is required") {
+            return reply.code(400).send({ error: "Password is required" });
+        }
 
-      console.log(e);
+       
         return reply.code(500).send({ 
             error: "Internal Server Error",
             message: e.message 
