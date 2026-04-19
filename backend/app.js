@@ -28,7 +28,7 @@ const fastify = Fastify({
 });
 
 const rawSessionSecret =
-  process.env.SESSION_SECRET || "osa-shield-dev-session-secret-change-me-123456";
+  process.env.SESSION_SECRET;
 const sessionSecret =
   rawSessionSecret.length >= 32 ? rawSessionSecret : rawSessionSecret.padEnd(32, "_");
 
