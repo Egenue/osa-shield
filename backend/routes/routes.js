@@ -156,9 +156,9 @@ fastify.post('/checkPassword', async (request, reply) => {
       //bad request no here
       // if no field return 400 before continue
       
-        if (e.message === "Password is required") {
-            return reply.code(400).send({ error: "Password is required" });
-        }
+        // if (e.message === "Password is required") {
+        //     return reply.code(400).send({ error: "Password is required" });
+        // }
 
        
         return reply.code(500).send({ 

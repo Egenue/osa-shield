@@ -104,6 +104,24 @@ function badgeText(value: string) {
   return value.replace(/_/g, ' ');
 }
 
+type PasswordCheckResponse = {
+  breached: boolean;
+  count: number;
+  message: string;
+};
+
+function cleanPasswordCheckMessage(result: PasswordCheckResponse) {
+  const message = result.message.replace(/\s+/g, ' ').trim();
+
+  if (message) {
+    return message;
+  }
+
+  return result.breached
+    ? `This password has been breached ${Number(result.count ?? 0).toLocaleString()} times.`
+    : 'This password has not been found in known breaches.';
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const resultRef = useRef<HTMLDivElement | null>(null);
@@ -131,38 +149,26 @@ export default function DashboardPage() {
     setLastAnalyzedTab(activeAnalyzerTab);
 
     try {
-
-      let analysis: ScamAnalysisResponse;
-
       if (activeAnalyzerTab === 'password') {
-        const pwnedResult = await apiFetch<{breached: boolean; count: number; message: string }>('/checkPassword', {
+        const pwnedResult = await apiFetch<PasswordCheckResponse>('/checkPassword', {
           method: 'POST',
-          body: JSON.stringify({ password: input.trim()}),
+          body: JSON.stringify({ password: input }),
         });
 
-        analysis = {
-          is_scam: pwnedResult.breached,
-          risk_level: pwnedResult.breached ? 'high': 'low',
-          verdict_title: pwnedResult.breached ? 'Compromised': 'Secure',
-          verdict_summary: pwnedResult.breached
-          ? 'This password was found in public data breach'
-          : 'No known leaks found for this password',
-          explanation: pwnedResult.message,
-          prediction: pwnedResult.breached ? 'leaked': 'clean',
-          scam_probability: pwnedResult.breached? 1 : 0,
-          threshold: 0.5,
-          location: 'Global Database',
-          analysis_mode: 'password',
-          triggers: pwnedResult.breached ? [{
-            key: 'pwned',
-            label: 'HIBP Breach Found',
-            description: `This password appeared in ${pwnedResult.count} known data breaches.`,
-            matches: []
-          }] : [],
-          scan_id: 'local-check',
-          url_details: null,
-        } as unknown as ScamAnalysisResponse;
-      }else{
+        const description = cleanPasswordCheckMessage(pwnedResult);
+
+        if (pwnedResult.breached) {
+          toast.warning('Password breach found', {
+            description,
+          });
+        } else {
+          toast.success('No known password breach found', {
+            description,
+          });
+        }
+
+        return;
+      }
 
       const analysis = await apiFetch<ScamAnalysisResponse>('/scams/analyze', {
         method: 'POST',
@@ -180,8 +186,6 @@ export default function DashboardPage() {
       } else {
         toast.success('Analysis completed.');
       }
-      }
-      
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Analysis failed.');
     } finally {
