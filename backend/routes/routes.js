@@ -136,7 +136,9 @@ fastify.get("/urlCheck", async (request, reply) => {
     return result;
   } catch (e) {
     console.error(e);
-    return reply.code(500).send({ error: e.message });
+    //usitume the error message to users just say internal server error and do console log for debugging p boy
+    // return reply.code(500).send({ error: e.message });
+    return reply.code(500).send({ message: "Internal server error"});
   }
 });
 fastify.post('/checkPassword', async (request, reply) => {
@@ -160,10 +162,10 @@ fastify.post('/checkPassword', async (request, reply) => {
         //     return reply.code(400).send({ error: "Password is required" });
         // }
 
+        console.log(e);
        
         return reply.code(500).send({ 
-            error: "Internal Server Error",
-            message: e.message 
+            message: "Internal server error"
         });
     }
 });
