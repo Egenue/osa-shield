@@ -110,6 +110,15 @@ type PasswordCheckResponse = {
   message: string;
 };
 
+type UrlCheckResponse = {
+  safe: boolean;
+  threats?: string[];
+  expireTime?: string;
+  raw?: unknown;
+};
+
+type DashboardUrlDetails = NonNullable<ScamAnalysisResponse['url_details']>;
+
 function cleanPasswordCheckMessage(result: PasswordCheckResponse) {
   const message = result.message.replace(/\s+/g, ' ').trim();
 
@@ -120,6 +129,105 @@ function cleanPasswordCheckMessage(result: PasswordCheckResponse) {
   return result.breached
     ? `This password has been breached ${Number(result.count ?? 0).toLocaleString()} times.`
     : 'This password has not been found in known breaches.';
+}
+
+function normalizeUrlForCheck(value: string) {
+  const trimmedValue = value.trim();
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmedValue)
+    ? trimmedValue
+    : `https://${trimmedValue}`;
+
+  try {
+    return new URL(candidate).toString();
+  } catch {
+    throw new Error('Enter a valid URL or domain name to analyze.');
+  }
+}
+
+function isIpHostname(hostname: string) {
+  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':');
+}
+
+function getRegistrableDomain(hostname: string) {
+  const parts = hostname.split('.').filter(Boolean);
+
+  if (isIpHostname(hostname) || parts.length === 0) {
+    return null;
+  }
+
+  return parts.length <= 2 ? hostname : parts.slice(-2).join('.');
+}
+
+function formatThreatLabel(threat: string) {
+  return threat
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function buildUrlDetails(urlToCheck: string): DashboardUrlDetails {
+  const parsedUrl = new URL(urlToCheck);
+  const protocol = parsedUrl.protocol.toLowerCase();
+
+  return {
+    normalized_url: parsedUrl.toString(),
+    hostname: parsedUrl.hostname,
+    ascii_hostname: parsedUrl.hostname,
+    registrable_domain: getRegistrableDomain(parsedUrl.hostname),
+    protocol: protocol.replace(':', ''),
+    port: parsedUrl.port || null,
+    path: parsedUrl.pathname || '/',
+    has_https: protocol === 'https:',
+    uses_ip_host: isIpHostname(parsedUrl.hostname),
+    dns_status: 'not_checked',
+    dns_resolved: false,
+    dns_message: 'DNS resolution was not part of the Web Risk urlCheck response.',
+    resolved_addresses: [],
+    redirect_chain: [],
+    redirect_message: 'Redirect tracing was not part of the Web Risk urlCheck response.',
+    final_url: parsedUrl.toString(),
+  };
+}
+
+function buildUrlCheckAnalysis(urlCheckResult: UrlCheckResponse, urlToCheck: string): ScamAnalysisResponse {
+  const threats = Array.isArray(urlCheckResult.threats) ? urlCheckResult.threats.filter(Boolean) : [];
+  const formattedThreats = threats.map(formatThreatLabel);
+  const isThreat = urlCheckResult.safe === false || threats.length > 0;
+  const urlDetails = buildUrlDetails(urlToCheck);
+  const destination = urlDetails.registrable_domain || urlDetails.hostname || urlToCheck;
+  const threatSummary = formattedThreats.length > 0 ? formattedThreats.join(', ') : 'unsafe activity';
+
+  return {
+    prediction: isThreat ? 'spam' : 'ham',
+    spam_probability: isThreat ? 0.95 : 0.05,
+    threshold: 0.5,
+    triggers: isThreat
+      ? [
+          {
+            key: 'web_risk_threat',
+            label: 'Web Risk threat match',
+            icon: '!',
+            description: `The urlCheck service flagged this URL for ${threatSummary}.`,
+            matches: formattedThreats.length > 0 ? formattedThreats : ['Unsafe URL signal'],
+          },
+        ]
+      : [],
+    explanation: isThreat
+      ? `The urlCheck service reported that ${destination} matches Web Risk threat data for ${threatSummary}.`
+      : `The urlCheck service did not return Web Risk threat matches for ${destination}.`,
+    is_scam: isThreat,
+    risk_level: isThreat ? 'high' : 'low',
+    verdict_title: isThreat ? 'Threat detected' : 'No threat found',
+    verdict_summary: isThreat
+      ? `Web Risk flagged ${destination} as unsafe.`
+      : `No Web Risk threat match was found for ${destination}.`,
+    analysis_mode: 'url',
+    url_details: urlDetails,
+    scan_id: '',
+    stored_scam_id: null,
+    stored_in_community: false,
+    location: null,
+  };
 }
 
 export default function DashboardPage() {
@@ -165,6 +273,28 @@ export default function DashboardPage() {
           toast.success('No known password breach found', {
             description,
           });
+        }
+
+        return;
+      }
+
+      if (activeAnalyzerTab === 'url') {
+        const urlToCheck = normalizeUrlForCheck(input);
+        const urlCheckResult = await apiFetch<UrlCheckResponse>(
+          `/urlCheck?url=${encodeURIComponent(urlToCheck)}`,
+          {
+            method: 'POST',
+          }
+        );
+        const analysis = buildUrlCheckAnalysis(urlCheckResult, urlToCheck);
+
+        setResult(analysis);
+        await checkSession();
+
+        if (analysis.is_scam) {
+          toast.warning('Threat detected by URL check.');
+        } else {
+          toast.success('URL check completed.');
         }
 
         return;
@@ -292,7 +422,7 @@ export default function DashboardPage() {
 
           <p className="max-w-2xl text-sm text-muted-foreground">
             {(activeAnalyzerTab as string) === 'url'
-              ? 'URL analysis now checks the destination structure, DNS behavior, redirects, and other phishing signals before scoring the link.'
+              ? 'URL analysis now uses the backend /urlCheck route to look up Web Risk matches before scoring the link.'
               : (activeAnalyzerTab as string) === 'password'
               ? 'Password checker is a tool checker if password has been exposed in known breaches'
               : 'Message analysis checks for scam patterns and summarizes the strongest signals in a readable verdict.'}
