@@ -422,7 +422,7 @@ export default function DashboardPage() {
 
           <p className="max-w-2xl text-sm text-muted-foreground">
             {(activeAnalyzerTab as string) === 'url'
-              ? 'URL analysis now uses the backend /urlCheck route to look up Web Risk matches before scoring the link.'
+              ? 'Look up Web Risk matches before scoring the link.'
               : (activeAnalyzerTab as string) === 'password'
               ? 'Password checker is a tool checker if password has been exposed in known breaches'
               : 'Message analysis checks for scam patterns and summarizes the strongest signals in a readable verdict.'}
