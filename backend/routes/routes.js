@@ -124,7 +124,7 @@ export default async function routes(fastify) {
     });
   }
 
-fastify.post("/urlCheck", async (request, reply) => {
+fastify.get("/urlCheck", async (request, reply) => {
   try {
     const { url } = request.query;       
 

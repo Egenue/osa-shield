@@ -283,7 +283,7 @@ export default function DashboardPage() {
         const urlCheckResult = await apiFetch<UrlCheckResponse>(
           `/urlCheck?url=${encodeURIComponent(urlToCheck)}`,
           {
-            method: 'POST',
+            method: 'GET',
           }
         );
         const analysis = buildUrlCheckAnalysis(urlCheckResult, urlToCheck);
