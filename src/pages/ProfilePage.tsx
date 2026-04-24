@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Shield, Activity, FileText, User, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import { Shield, Activity, FileText, User, MapPin, Send, CheckCircle2, Settings, Zap} from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiFetch, type ProfileActivity } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
@@ -71,6 +72,89 @@ export default function ProfilePage() {
     }
   };
 
+const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+const [mfaEnabled, setMfaEnabled] = useState(false);
+
+const toggleMFA = () => {
+  setMfaEnabled(!mfaEnabled);
+  toast.success(`MFA ${!mfaEnabled ? 'Enabled' : 'Disabled'}`);
+};
+
+
+
+  {isSettingsOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      onClick={() => setIsSettingsOpen(false)}
+      className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+    />
+    
+   
+    <motion.div 
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="glass relative w-full max-w-md overflow-hidden rounded-2xl border border-primary/20 p-6 shadow-2xl"
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="font-display text-xl font-bold flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" /> Account Settings
+        </h2>
+        <button 
+          onClick={() => setIsSettingsOpen(false)}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Zap className="h-5 w-5 rotate-45" />
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between rounded-xl border border-border/50 bg-secondary/30 p-4">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 font-medium">
+              <Shield className="h-4 w-4 text-primary" />
+              MFA Authentication
+            </div>
+            <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
+          </div>
+          
+          {}
+          <button
+            onClick={toggleMFA}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none ${
+              mfaEnabled ? 'bg-primary' : 'bg-secondary'
+            }`}
+          >
+            <span
+              className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                mfaEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
+          <p className="text-xs leading-relaxed text-warning/80">
+            Enabling Multi-Factor Authentication requires a compatible authenticator app like Google Authenticator or Authy.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <Button 
+          variant="cyber" 
+          className="w-full"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          Save Configuration
+        </Button>
+      </div>
+    </motion.div>
+  </div>
+)}
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       {/* Profile card */}
@@ -89,6 +173,15 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
+
+          <Button 
+          variant='ghost'
+          size='icon'
+          className="text-muted-foreground hover:text-primary transition-colors"
+          onClick={() => setIsSettingsOpen(true)}
+          >
+            <Settings className='h-6 w-6'/>
+          </Button>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
