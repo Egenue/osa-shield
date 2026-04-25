@@ -82,80 +82,78 @@ const toggleMFA = () => {
 
 
 
-  {isSettingsOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      onClick={() => setIsSettingsOpen(false)}
-      className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-    />
-    
-   
-    <motion.div 
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="glass relative w-full max-w-md overflow-hidden rounded-2xl border border-primary/20 p-6 shadow-2xl"
-    >
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold flex items-center gap-2">
-          <Settings className="h-5 w-5 text-primary" /> Account Settings
-        </h2>
-        <button 
-          onClick={() => setIsSettingsOpen(false)}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <Zap className="h-5 w-5 rotate-45" />
-        </button>
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between rounded-xl border border-border/50 bg-secondary/30 p-4">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 font-medium">
-              <Shield className="h-4 w-4 text-primary" />
-              MFA Authentication
-            </div>
-            <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
-          </div>
-          
-          {}
-          <button
-            onClick={toggleMFA}
-            className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none ${
-              mfaEnabled ? 'bg-primary' : 'bg-secondary'
-            }`}
-          >
-            <span
-              className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
-                mfaEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
-          <p className="text-xs leading-relaxed text-warning/80">
-            Enabling Multi-Factor Authentication requires a compatible authenticator app like Google Authenticator or Authy.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <Button 
-          variant="cyber" 
-          className="w-full"
-          onClick={() => setIsSettingsOpen(false)}
-        >
-          Save Configuration
-        </Button>
-      </div>
-    </motion.div>
-  </div>
-)}
-
   return (
+    <>
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setIsSettingsOpen(false)}
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+          />
+
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="glass relative w-full max-w-md overflow-hidden rounded-2xl border border-primary/20 p-6 shadow-2xl"
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="font-display text-xl font-bold flex items-center gap-2">
+                <Settings className="h-5 w-5 text-primary" /> Account Settings
+              </h2>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Zap className="h-5 w-5 rotate-45" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-secondary/30 p-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Shield className="h-4 w-4 text-primary" />
+                    MFA Authentication
+                  </div>
+                  <p className="text-xs text-muted-foreground">Recommended setting, OTP 2FA send to email.</p>
+                </div>
+
+                <button
+                  onClick={toggleMFA}
+                  className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none ${
+                    mfaEnabled ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                      mfaEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-warning/20 bg-warning/5 p-4">
+                <p className="text-xs leading-relaxed text-warning/80">
+                  Enabling Multi-Factor Authentication on every login attempt otp will be send to email for verification.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <Button
+                variant="cyber"
+                className="w-full"
+                onClick={() => setIsSettingsOpen(false)}
+              >
+                Save Configuration
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       {/* Profile card */}
       <div className="glass rounded-2xl p-8 mb-6">
@@ -270,5 +268,6 @@ const toggleMFA = () => {
         </div>
       </div>
     </div>
+    </>
   );
 }
