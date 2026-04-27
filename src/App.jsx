@@ -10,7 +10,7 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import Verification from "@/pages/Verification";
 import DashboardPage from "@/pages/DashboardPage";
-import CommunityPage from "@/pages/CommunityPage";
+import CommunityPage from "./pages/CommunityPage";
 import ThreatMapPage from "@/pages/ThreatMapPage";
 import ReportPage from "@/pages/ReportPage";
 import ProfilePage from "@/pages/ProfilePage";

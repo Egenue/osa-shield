@@ -5,10 +5,10 @@ import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 
 const navItems = [
-  { label: 'Analyzer', icon, path: '/dashboard' },
-  { label: 'Community', icon, path: '/community' },
-  { label: 'Threat Map', icon, path: '/threats' },
-  { label: 'Zone', icon, path: '/zone' },
+  { label: 'Analyzer', icon: Shield, path: '/dashboard' },
+  { label: 'Community', icon: Users, path: '/community' },
+  { label: 'Threat Map', icon: Map, path: '/threats' },
+  { label: 'Zone', icon: Globe, path: '/zone' },
 ];
 
 export default function Navbar() {

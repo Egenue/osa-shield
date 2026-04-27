@@ -5,22 +5,22 @@ import { motion } from 'framer-motion';
 
 const features = [
   {
-    icon,
+    icon: Shield,
     title: 'AI-Powered Analysis',
     description: 'Advanced heuristics scan URLs, emails, and messages for malicious patterns in real-time.',
   },
   {
-    icon,
+    icon: Users,
     title: 'Community Intelligence',
     description: 'Crowdsourced scam reports verified by the community create a living threat database.',
   },
   {
-    icon,
+    icon: Map,
     title: 'Global Threat Map',
     description: 'Visualize scam hotspots worldwide with interactive geospatial threat intelligence.',
   },
   {
-    icon,
+    icon: Activity,
     title: 'Trust Scoring',
     description: 'Build reputation through accurate reports and help protect others in the network.',
   },
@@ -109,7 +109,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                viewport={{ once }}
+                viewport={{ once: true }}
                 className="text-center"
               >
                 <div className="text-3xl md:text-4xl font-display font-bold text-primary mb-1">{stat.value}</div>
@@ -138,7 +138,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                viewport={{ once }}
+                viewport={{ once: true }}
                 className="glass rounded-xl p-6 hover:border-primary/30 transition-all duration-300 group"
               >
                 <div className="h-12 w-12 rounded-lg gradient-primary flex items-center justify-center mb-4 group-hover:box-glow transition-all">

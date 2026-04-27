@@ -19,10 +19,10 @@ export default function RegisterPage() {
     e.preventDefault();
     if (password !== confirm) { toast.error('Passwords do not match.'); return; }
 
-    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{12,}$/;
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$/;
 
     if(password && !strongPasswordRegex.test(password) ){ 
-      toast.error("Password must be at least 12 characters and include uppercase, lowercase, numbers, and special characters.");
+      toast.error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters.");
       return;
       }
       

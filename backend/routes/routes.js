@@ -31,6 +31,11 @@ import { createThreadController,
   updateThreadCommentController,
   updateThreadController
  } from "../controllers/threadController.js";
+import {
+  getThreatsController,
+  getThreatDetailsController,
+  getThreatsStatsController
+ } from "../controllers/threatController.js";
 import { request } from "node:http";
 import { urlCheck } from "../services/urlCheck.js";
 
@@ -114,7 +119,10 @@ export default async function routes(fastify) {
     "/send-reset-email",
     "/resetPassword",
     "/checkPassword",
-    "/urlCheck"
+    "/urlCheck",
+    "/threats",
+    "/threats/:threatId",
+    "/threats/stats"
   ];
 
   for (const path of preflightPaths) {
@@ -336,5 +344,30 @@ fastify.post(
   },
   resetPasswordPasswordController
 )
+
+// Threat Map API Endpoints
+fastify.get(
+  "/threats",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  getThreatsController
+);
+
+fastify.get(
+  "/threats/:threatId",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  getThreatDetailsController
+);
+
+fastify.get(
+  "/threats/stats",
+  {
+    preHandler: [requireDatabaseReady]
+  },
+  getThreatsStatsController
+);
 
 };

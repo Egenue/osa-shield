@@ -10,6 +10,7 @@ export default function ThreatMapPage() {
   useEffect(() => {
     let map;
     let markers = [];
+    let polylines = [];
     let interval;
 
     const initMap = async () => {
@@ -21,47 +22,94 @@ export default function ThreatMapPage() {
       map = L.map(mapRef.current, {
         center: [20, 0],
         zoom: 2,
-        zoomControl,
+        zoomControl: true,
       });
 
-      L.tileLayer('https://threatmap.checkpoint.com/', {
-        attribution: '&copy; OSM & CARTO',
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-      const icon = L.divIcon({
-        html: `<div style="width:12px;height:12px;background:hsl(180,100%,50%);border-radius:50%;box-shadow:0 0 10px hsl(180,100%,50%,0.6);"></div>`,
+      // Icon for threat origin
+      const originIcon = L.divIcon({
+        html: `<div style="width:14px;height:14px;background:hsl(0,100%,50%);border-radius:50%;box-shadow:0 0 12px hsl(0,100%,50%,0.8);border:2px solid white;"></div>`,
         className: '',
-        iconSize: [12, 12],
+        iconSize: [14, 14],
+      });
+
+      // Icon for threat target
+      const targetIcon = L.divIcon({
+        html: `<div style="width:14px;height:14px;background:hsl(180,100%,50%);border-radius:50%;box-shadow:0 0 12px hsl(180,100%,50%,0.8);border:2px solid white;"></div>`,
+        className: '',
+        iconSize: [14, 14],
       });
 
       const fetchThreats = async () => {
         try {
-  const res = await fetch('https://threatmap.checkpoint.com/');  
+          const res = await fetch(`http://localhost:5000/threats?timeRange=${timeRange}`);
           const data = await res.json();
 
-          setThreats(data);
+          if (data.success && Array.isArray(data.data)) {
+            setThreats(data.data);
 
-          // Remove old markers
-          markers.forEach((m) => m.remove());
-          markers = [];
+            // Remove old markers and polylines
+            markers.forEach((m) => m.remove());
+            polylines.forEach((p) => p.remove());
+            markers = [];
+            polylines = [];
 
-          // Add new markers
-          data.forEach((t) => {
-            const marker = L.marker([t.lat, t.lng], { icon })
-              .addTo(map)
-              .bindPopup(`
-                <div style="font-family:Inter,sans-serif;color:#e5e5e5;background:#1a1a2e;padding:8px 12px;border-radius:8px;min-width:160px;">
-                  <strong style="color:hsl(180,100%,50%)">${t.type}</strong><br/>
-                  <span style="font-size:12px;opacity:0.7">${t.location}</span><br/>
-                  <span style="font-size:11px;opacity:0.5">${t.time}</span>
+            // Add new markers and threat lines
+            data.data.forEach((t) => {
+              // Origin marker
+              const originMarker = L.marker([t.originLat, t.originLng], { icon: originIcon })
+                .addTo(map)
+                .bindPopup(`
+                  <div style="font-family:Inter,sans-serif;color:#e5e5e5;background:#1a1a2e;padding:8px 12px;border-radius:8px;min-width:200px;">
+                    <strong style="color:hsl(0,100%,50%)">🔴 Origin</strong><br/>
+                    <span style="font-size:12px;font-weight:bold;">${t.origin}</span><br/>
+                    <span style="font-size:11px;opacity:0.7;">Type: ${t.type}</span><br/>
+                    <span style="font-size:11px;opacity:0.5;">${new Date(t.timestamp).toLocaleString()}</span>
+                  </div>
+                `);
+
+              // Target marker
+              const targetMarker = L.marker([t.targetLat, t.targetLng], { icon: targetIcon })
+                .addTo(map)
+                .bindPopup(`
+                  <div style="font-family:Inter,sans-serif;color:#e5e5e5;background:#1a1a2e;padding:8px 12px;border-radius:8px;min-width:200px;">
+                    <strong style="color:hsl(180,100%,50%)">🔵 Target</strong><br/>
+                    <span style="font-size:12px;font-weight:bold;">${t.target}</span><br/>
+                    <span style="font-size:11px;opacity:0.7;">Severity: ${t.severity}</span><br/>
+                    <span style="font-size:11px;opacity:0.5;">${t.description}</span>
+                  </div>
+                `);
+
+              // Attack flow line
+              const polyline = L.polyline([
+                [t.originLat, t.originLng],
+                [t.targetLat, t.targetLng]
+              ], {
+                color: t.severity === 'critical' ? '#ff0000' : t.severity === 'high' ? '#ff9800' : '#ffc107',
+                weight: 2,
+                opacity: 0.7,
+                dashArray: '5, 5',
+                interactive: true
+              }).addTo(map).bindPopup(`
+                <div style="font-family:Inter,sans-serif;color:#e5e5e5;background:#1a1a2e;padding:8px 12px;border-radius:8px;min-width:200px;">
+                  <strong style="color:${t.severity === 'critical' ? '#ff0000' : t.severity === 'high' ? '#ff9800' : '#ffc107'}">${t.type}</strong><br/>
+                  <span style="font-size:12px;">From: ${t.origin}</span><br/>
+                  <span style="font-size:12px;">To: ${t.target}</span><br/>
+                  <span style="font-size:11px;opacity:0.7;">Severity: ${t.severity}</span><br/>
+                  <span style="font-size:11px;opacity:0.5;">${new Date(t.timestamp).toLocaleString()}</span>
                 </div>
               `);
 
-            markers.push(marker);
-          });
-
+              markers.push(originMarker);
+              markers.push(targetMarker);
+              polylines.push(polyline);
+            });
+          }
         } catch (err) {
           console.error('Error fetching threats:', err);
         }
@@ -78,7 +126,9 @@ export default function ThreatMapPage() {
 
     return () => {
       if (interval) clearInterval(interval);
-      if (map) map.remove();
+      if (mapRef.current && mapRef.current._leaflet_map) {
+        mapRef.current._leaflet_map.remove();
+      }
     };
   }, [timeRange]);
 
@@ -117,20 +167,31 @@ export default function ThreatMapPage() {
 
       {/* Threat List */}
       <div className="absolute top-4 right-4 z-10 w-72 max-h-[60vh] overflow-y-auto glass rounded-xl p-4 hidden lg:block">
-        <h3 className="font-display text-sm font-bold mb-3">Recent Threats</h3>
+        <h3 className="font-display text-sm font-bold mb-3">Active Threats ({threats.length})</h3>
         <div className="space-y-2">
           {threats.length === 0 ? (
-            <div className="text-xs text-muted-foreground">No data</div>
+            <div className="text-xs text-muted-foreground">No active threats</div>
           ) : (
             threats.map((t) => (
               <div
                 key={t.id}
                 className="p-2.5 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors cursor-pointer"
               >
-                <div className="text-sm font-medium">{t.type}</div>
-                <div className="text-xs text-muted-foreground flex items-center justify-between">
-                  <span>{t.location}</span>
-                  <span>{t.time}</span>
+                <div className="text-sm font-medium flex items-center justify-between">
+                  <span>{t.type}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    t.severity === 'critical' ? 'bg-red-500/20 text-red-400' : 
+                    t.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : 
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>{t.severity}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  <div>🔴 {t.origin}</div>
+                  <div>→</div>
+                  <div>🔵 {t.target}</div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
+                  <span>{new Date(t.timestamp).toLocaleTimeString()}</span>
                 </div>
               </div>
             ))
@@ -140,11 +201,3 @@ export default function ThreatMapPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-

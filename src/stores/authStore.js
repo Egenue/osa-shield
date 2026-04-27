@@ -21,7 +21,7 @@ export const useAuthStore = create((set) => ({
   isCheckingSession: false,
 
   login: async (email, password) => {
-    set({ isLoading: true });
+    set({ isLoading: true, user: null, isAuthenticated: false });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -43,11 +43,11 @@ export const useAuthStore = create((set) => ({
       set({
         user: data.user ? normalizeUser(data.user) : null,
         isAuthenticated: !!data.user,
-        isLoading: false,
       });
     } catch (error) {
-      set({ isLoading: false, isAuthenticated: false, user: null });
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -67,11 +67,9 @@ export const useAuthStore = create((set) => ({
       }
 
       const data = await response.json();
-      set({ isLoading: false });
       return data.message ?? 'Account created successfully.';
-    } catch (error) {
+    } finally {
       set({ isLoading: false });
-      throw error;
     }
   },
 
@@ -98,18 +96,18 @@ export const useAuthStore = create((set) => ({
       });
 
       if (!response.ok) {
-        set({ user: null, isAuthenticated: false, isCheckingSession: false });
-        return;
+        throw new Error('Session check failed');
       }
 
       const data = await response.json();
       set({
         user: data.user ? normalizeUser(data.user) : null,
         isAuthenticated: !!data.user,
-        isCheckingSession: false,
       });
     } catch {
-      set({ user: null, isAuthenticated: false, isCheckingSession: false });
+      set({ user: null, isAuthenticated: false });
+    } finally {
+      set({ isCheckingSession: false });
     }
   },
 

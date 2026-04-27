@@ -1,32 +1,11 @@
 import * as React from "react";
-import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react";
+import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-type CarouselApi = UseEmblaCarouselType[1];
-type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
-type CarouselOptions = UseCarouselParameters[0];
-type CarouselPlugin = UseCarouselParameters[1];
-
-type CarouselProps = {
-  opts?;
-  plugins?;
-  orientation?: "horizontal" | "vertical";
-  setApi?: (api) => void;
-};
-
-type CarouselContextProps = {
-  carouselRef<typeof useEmblaCarousel>[0];
-  api<typeof useEmblaCarousel>[1];
-  scrollPrev: () => void;
-  scrollNext: () => void;
-  canScrollPrev;
-  canScrollNext;
-} & CarouselProps;
-
-const CarouselContext = React.createContext<CarouselContextProps | null>(null);
+const CarouselContext = React.createContext(null);
 
 function useCarousel() {
   const context = React.useContext(CarouselContext);
@@ -38,12 +17,12 @@ function useCarousel() {
   return context;
 }
 
-const Carousel = React.forwardRef & CarouselProps>(
+const Carousel = React.forwardRef(
   ({ orientation = "horizontal", opts, setApi, plugins, className, children, ...props }, ref) => {
     const [carouselRef, api] = useEmblaCarousel(
       {
         ...opts,
-        axis === "horizontal" ? "x" : "y",
+        axis: orientation === "horizontal" ? "x" : "y",
       },
       plugins,
     );
@@ -148,7 +127,7 @@ const CarouselContent = React.forwardRef>(
 );
 CarouselContent.displayName = "CarouselContent";
 
-const CarouselItem = React.forwardRef>(
+const CarouselItem = React.forwardRef(
   ({ className, ...props }, ref) => {
     const { orientation } = useCarousel();
 
@@ -165,7 +144,7 @@ const CarouselItem = React.forwardRef>(
 );
 CarouselItem.displayName = "CarouselItem";
 
-const CarouselPrevious = React.forwardRef>(
+const CarouselPrevious = React.forwardRef(
   ({ className, variant = "outline", size = "icon", ...props }, ref) => {
     const { orientation, scrollPrev, canScrollPrev } = useCarousel();
 
@@ -193,7 +172,7 @@ const CarouselPrevious = React.forwardRef>(
 );
 CarouselPrevious.displayName = "CarouselPrevious";
 
-const CarouselNext = React.forwardRef>(
+const CarouselNext = React.forwardRef(
   ({ className, variant = "outline", size = "icon", ...props }, ref) => {
     const { orientation, scrollNext, canScrollNext } = useCarousel();
 
@@ -221,7 +200,7 @@ const CarouselNext = React.forwardRef>(
 );
 CarouselNext.displayName = "CarouselNext";
 
-export { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext };
+export { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext };
 
 
 
