@@ -175,39 +175,62 @@ function buildUrlDetails(urlToCheck) {
 }
 
 function buildUrlCheckAnalysis(urlCheckResult, urlToCheck) {
-  const threats = Array.isArray(urlCheckResult.threats) ? urlCheckResult.threats.filter(Boolean) : [];
+  const {
+    safe,
+    threats: rawThreats = [],
+    prediction,
+    spam_probability,
+    verdict_title,
+    verdict_summary,
+    matches = [],
+    is_scam = false,
+    risk_level,
+    url_details = null,
+    stored_scam_id = null,
+    stored_in_community = false,
+    location = null,
+    triggers = [],
+  } = urlCheckResult || {};
+
+  const threats = Array.isArray(rawThreats) ? rawThreats.filter(Boolean) : [];
   const formattedThreats = threats.map(formatThreatLabel);
-  const isThreat = urlCheckResult.safe === false || threats.length > 0;
+  const isThreat = safe === false || threats.length > 0;
   const urlDetails = buildUrlDetails(urlToCheck);
   const destination = urlDetails.registrable_domain || urlDetails.hostname || urlToCheck;
   const threatSummary = formattedThreats.length > 0 ? formattedThreats.join(', ') : 'unsafe activity';
 
-  return {
-    prediction: prediction ? 'spam' : 'ham',
-    spam_probability: spam_probability ? 0.95 : 0.05,
-    threshold: 0.5,
-    triggers: triggers
+  const effectivePrediction = prediction ?? (isThreat ? 'spam' : 'ham');
+  const effectiveProbability = typeof spam_probability === 'number' ? spam_probability : isThreat ? 0.95 : 0.05;
+  const effectiveTriggers = triggers.length > 0
+    ? triggers
+    : isThreat
       ? [
           {
             key: 'web_risk_threat',
             label: 'Web Risk threat match',
             icon: '!',
             description: `The urlCheck service flagged this URL for ${threatSummary}.`,
-              matches: matches.length > 0 ? formattedThreats : ['Unsafe URL signal'],
+            matches: matches.length > 0 ? formattedThreats : ['Unsafe URL signal'],
           },
         ]
-      : [],
-    explanation: triggers.length > 0
+      : [];
+
+  return {
+    prediction: effectivePrediction,
+    spam_probability: effectiveProbability,
+    threshold: 0.5,
+    triggers: effectiveTriggers,
+    explanation: effectiveTriggers.length > 0
       ? `The urlCheck service reported that ${destination} matches Web Risk threat data for ${threatSummary}.`
       : `The urlCheck service did not return Web Risk threat matches for ${destination}.`,
-    is_scam: is_scam,
+    is_scam,
     risk_level: risk_level ? 'high' : 'low',
     verdict_title: verdict_title ? 'Threat detected' : 'No threat found',
     verdict_summary: verdict_summary
       ? `Web Risk flagged ${destination} as unsafe.`
       : `No Web Risk threat match was found for ${destination}.`,
     analysis_mode: 'url',
-    url_details: url_details,
+    url_details: url_details || urlDetails,
     scan_id: '',
     stored_scam_id,
     stored_in_community,
@@ -224,6 +247,11 @@ export default function DashboardPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [lastAnalyzedTab, setLastAnalyzedTab] = useState('text');
+  const dashboardStats = {
+    totalScans: 0,
+    totalReports: 0,
+    trustScore: 0,
+  };
 
   useEffect(() => {
     if (!result) return;
@@ -245,7 +273,7 @@ export default function DashboardPage() {
       if (activeAnalyzerTab === 'password') {
         const pwnedResult = await apiFetch('/checkPassword', {
           method: 'POST',
-          body: JSON.stringify({ password }),
+          body: JSON.stringify({ password: input }),
         });
 
         const description = cleanPasswordCheckMessage(pwnedResult);
@@ -288,8 +316,8 @@ export default function DashboardPage() {
       const analysis = await apiFetch('/scams/analyze', {
         method: 'POST',
         body: JSON.stringify({
-          inputType,
-          content: content.trim(),
+          inputType: activeAnalyzerTab,
+          content: input.trim(),
         }),
       });
 
@@ -325,9 +353,9 @@ export default function DashboardPage() {
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
-          { label: 'Total Scans', value: value?.totalScans || 0, icon: icon },
-          { label: 'Reports Filed', value: value?.totalReports || 0, icon: icon },
-          { label: 'Trust Score', value: value?.trustScore || 0, icon: icon },
+          { label: 'Total Scans', value: dashboardStats.totalScans, icon: Activity },
+          { label: 'Reports Filed', value: dashboardStats.totalReports, icon: FileText },
+          { label: 'Trust Score', value: dashboardStats.trustScore, icon: Shield },
         ].map((stat) => (
           <div key={stat.label} className="glass flex items-center gap-4 rounded-xl p-5">
             <div className="gradient-primary flex h-10 w-10 items-center justify-center rounded-lg">
@@ -373,7 +401,7 @@ export default function DashboardPage() {
             onChange={(event) => setInput(event.target.value)}
             className="mb-4 min-h-[120px] border-border/50 bg-secondary/50"
           />
-        ) === 'url' ? (
+        ) : activeAnalyzerTab === 'url' ? (
           <Input
             placeholder="https://suspicious-link.example.com"
             value={input}
@@ -382,14 +410,13 @@ export default function DashboardPage() {
           />
         ) : (
           <Input
-          type="password"
-          placeholder="Input password"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          className="mb-4 border-border/50 bg-secondary/50"
+            type="password"
+            placeholder="Input password"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            className="mb-4 border-border/50 bg-secondary/50"
           />
-        ) : null
-        }
+        )}
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <Button variant="cyber" onClick={handleAnalyze} disabled={isAnalyzing || !input.trim()}>

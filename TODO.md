@@ -32,5 +32,4 @@
 
 ## Phase 5: Verification
 - [ ] Run `npm install`
-- [ ] Run `npm run lint` or `npm run dev` to verify
 

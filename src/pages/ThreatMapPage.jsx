@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Clock, Crosshair } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/api';
 
 export default function ThreatMapPage() {
   const mapRef = useRef(null);
@@ -31,14 +32,12 @@ export default function ThreatMapPage() {
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-      // Icon for threat origin
       const originIcon = L.divIcon({
         html: `<div style="width:14px;height:14px;background:hsl(0,100%,50%);border-radius:50%;box-shadow:0 0 12px hsl(0,100%,50%,0.8);border:2px solid white;"></div>`,
         className: '',
         iconSize: [14, 14],
       });
 
-      // Icon for threat target
       const targetIcon = L.divIcon({
         html: `<div style="width:14px;height:14px;background:hsl(180,100%,50%);border-radius:50%;box-shadow:0 0 12px hsl(180,100%,50%,0.8);border:2px solid white;"></div>`,
         className: '',
@@ -47,19 +46,18 @@ export default function ThreatMapPage() {
 
       const fetchThreats = async () => {
         try {
-          const res = await fetch(`http://localhost:5000/threats?timeRange=${timeRange}`);
-          const data = await res.json();
+          const data = await apiFetch(`/threats?timeRange=${timeRange}`);
 
           if (data.success && Array.isArray(data.data)) {
             setThreats(data.data);
 
-            // Remove old markers and polylines
+            
             markers.forEach((m) => m.remove());
             polylines.forEach((p) => p.remove());
             markers = [];
             polylines = [];
 
-            // Add new markers and threat lines
+           
             data.data.forEach((t) => {
               // Origin marker
               const originMarker = L.marker([t.originLat, t.originLng], { icon: originIcon })
@@ -73,7 +71,7 @@ export default function ThreatMapPage() {
                   </div>
                 `);
 
-              // Target marker
+            
               const targetMarker = L.marker([t.targetLat, t.targetLng], { icon: targetIcon })
                 .addTo(map)
                 .bindPopup(`
@@ -85,7 +83,7 @@ export default function ThreatMapPage() {
                   </div>
                 `);
 
-              // Attack flow line
+            
               const polyline = L.polyline([
                 [t.originLat, t.originLng],
                 [t.targetLat, t.targetLng]
@@ -167,7 +165,7 @@ export default function ThreatMapPage() {
 
       {/* Threat List */}
       <div className="absolute top-4 right-4 z-10 w-72 max-h-[60vh] overflow-y-auto glass rounded-xl p-4 hidden lg:block">
-        <h3 className="font-display text-sm font-bold mb-3">Active Threats ({threats.length})</h3>
+        <h3 className="font-display text-sm font-bold mb-3">Active Threats : {threats.length}</h3>
         <div className="space-y-2">
           {threats.length === 0 ? (
             <div className="text-xs text-muted-foreground">No active threats</div>
