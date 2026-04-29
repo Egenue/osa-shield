@@ -8,6 +8,9 @@ import createScamVoteModel from "../model/ScamVoteModel.js";
 import createThreadModel from "../model/ThreadModel.js";
 import createThreadLikesModel from "../model/ThreadLikesModel.js"
 import createThreadCommentsModel from "../model/ThreadCommentsModel.js"
+import createSettingsModel from "../model/SettingsModel.js";
+import createOtpModel from "../model/OtpModel.js";
+
 
 dotenv.config();
 
@@ -87,6 +90,8 @@ db.ScamVote = createScamVoteModel(sequelize, DataTypes);
 db.Thread = createThreadModel(sequelize, DataTypes);
 db.ThreadLikes = createThreadLikesModel(sequelize, DataTypes);
 db.ThreadComments = createThreadCommentsModel(sequelize, DataTypes);
+db.Setting = createSettingsModel(sequelize, DataTypes);
+db.Otp = createOtpModel(sequelize, DataTypes);
 
 for (const value of Object.values(db)) {
   if (value?.associate) {
@@ -102,5 +107,8 @@ export const ScamVote = db.ScamVote;
 export const Thread = db.Thread;
 export const ThreadLikes = db.ThreadLikes;
 export const ThreadComments = db.ThreadComments;
+export const Setting = db.Setting;
+export const Otp = db.Otp;
+
 export { sequelize, db };
 export default sequelize;

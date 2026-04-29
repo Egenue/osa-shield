@@ -1,7 +1,32 @@
 import { create } from 'zustand';
 import { API_BASE_URL, readErrorMessage } from '@/lib/api';
 
-function normalizeUser(user) {
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'user' | 'admin';
+  trustScore: number;
+  totalScans: number;
+  totalReports: number;
+  location: string | null;
+}
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isCheckingSession: boolean;
+  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string }>;
+  verifyLoginOtp: (email: string, code: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<string>;
+  verifyEmail: (token: string) => Promise<string>;
+  checkSession: () => Promise<void>;
+  logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
+}
+
+function normalizeUser(user: BackendUser): User {
   return {
     id: user.id ?? user.user_id ?? '',
     name: user.name ?? '',
@@ -39,19 +64,63 @@ export const useAuthStore = create((set) => ({
         throw new Error(await readErrorMessage(response));
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        user?: BackendUser;
+        requiresTwoFactor?: boolean;
+        email?: string;
+      };
+
+      if (data.requiresTwoFactor) {
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+        return { requiresTwoFactor: true, email: data.email ?? email };
+      }
+
       set({
         user: data.user ? normalizeUser(data.user) : null,
         isAuthenticated: !!data.user,
+        isLoading: false,
       });
+      return { requiresTwoFactor: false };
     } catch (error) {
+      set({ isLoading: false, isAuthenticated: false, user: null });
       throw error;
-    } finally {
-      set({ isLoading: false });
     }
   },
 
-  register: async (name, email, password) => {
+  verifyLoginOtp: async (email: string, code: string) => {
+    set({ isLoading: true });
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, code }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { user?: BackendUser };
+      set({
+        user: data.user ? normalizeUser(data.user) : null,
+        isAuthenticated: !!data.user,
+        isLoading: false,
+      });
+      return { requiresTwoFactor: false };
+    } catch (error) {
+      set({ isLoading: false, isAuthenticated: false, user: null });
+      throw error;
+    }
+  },
+
+  register: async (name: string, email: string, password: string) => {
     set({ isLoading: true });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {

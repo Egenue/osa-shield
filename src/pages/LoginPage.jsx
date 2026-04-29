@@ -15,8 +15,21 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)){
+      return toast.error("Please put valid email address");
+    }
+    
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      if (result.requiresTwoFactor) {
+        sessionStorage.setItem('pendingLoginEmail', result.email ?? email);
+        toast.success('OTP sent to your email.');
+        navigate('/login-verification', { state: { email: result.email ?? email } });
+        return;
+      }
+
       toast.success('Welcome back, Agent.');
       navigate('/dashboard');
     } catch (error) {

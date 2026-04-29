@@ -7,6 +7,7 @@ import {
   meController,
   registerController,
   verifyEmailController,
+  verifyLoginOtpController,
   sendResetPasswordController,
   resetPasswordPasswordController
 } from "../controllers/userController.js";
@@ -38,6 +39,8 @@ import {
  } from "../controllers/threatController.js";
 import { request } from "node:http";
 import { urlCheck } from "../services/urlCheck.js";
+import { twoFactorSettingController } from "../controllers/settingsController.js";
+import { serverMessageController } from "../message/serverMessage.js";
 
 const DEFAULT_ALLOWED_ORIGINS = "http://localhost:8080,http://localhost:8081,http://localhost:5173";
 
@@ -99,6 +102,7 @@ export default async function routes(fastify) {
     "/auth/register",
     "/auth/verify-email",
     "/auth/login",
+    "/auth/login/verify-otp",
     "/auth/logout",
     "/auth/me",
     "/scams",
@@ -120,9 +124,8 @@ export default async function routes(fastify) {
     "/resetPassword",
     "/checkPassword",
     "/urlCheck",
-    "/threats",
-    "/threats/:threatId",
-    "/threats/stats"
+    "/two-factor",
+    "/",
   ];
 
   for (const path of preflightPaths) {
@@ -179,6 +182,7 @@ fastify.post('/checkPassword', async (request, reply) => {
 });
 
   fastify.get("/health", healthController);
+  fastify.get("/", serverMessageController);
   fastify.post(
     "/auth/register",
     {
@@ -199,6 +203,13 @@ fastify.post('/checkPassword', async (request, reply) => {
       preHandler: requireDatabaseReady,
     },
     loginController
+  );
+  fastify.post(
+    "/auth/login/verify-otp",
+    {
+      preHandler: requireDatabaseReady,
+    },
+    verifyLoginOtpController
   );
   fastify.post("/auth/logout", logoutController);
   fastify.get(
@@ -344,30 +355,19 @@ fastify.post(
   },
   resetPasswordPasswordController
 )
-
-// Threat Map API Endpoints
-fastify.get(
-  "/threats",
+fastify.post(
+  "/two-factor",
   {
-    preHandler: [requireDatabaseReady]
+    preHandler: [requireDatabaseReady, requireAuthentication],
   },
-  getThreatsController
-);
-
+  twoFactorSettingController
+)
 fastify.get(
-  "/threats/:threatId",
+  "/two-factor",
   {
-    preHandler: [requireDatabaseReady]
+    preHandler: [requireDatabaseReady, requireAuthentication],
   },
-  getThreatDetailsController
-);
-
-fastify.get(
-  "/threats/stats",
-  {
-    preHandler: [requireDatabaseReady]
-  },
-  getThreatsStatsController
-);
+  twoFactorSettingController
+)
 
 };

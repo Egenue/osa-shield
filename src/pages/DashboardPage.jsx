@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -230,43 +230,67 @@ function buildUrlCheckAnalysis(urlCheckResult, urlToCheck) {
       ? `Web Risk flagged ${destination} as unsafe.`
       : `No Web Risk threat match was found for ${destination}.`,
     analysis_mode: 'url',
-    url_details: url_details || urlDetails,
+    url_details: urlDetails,
     scan_id: '',
-    stored_scam_id,
-    stored_in_community,
-    location,
+    stored_scam_id: null,
+    stored_in_community: false,
+    location: null,
+  };
+}
+
+function buildPasswordAnalysis(passwordCheckResult) {
+  const count = Number(passwordCheckResult.count ?? 0);
+  const isBreached = Boolean(passwordCheckResult.breached);
+  const description = cleanPasswordCheckMessage(passwordCheckResult);
+
+  return {
+    prediction: isBreached ? 'spam' : 'ham',
+    spam_probability: isBreached ? 0.9 : 0.05,
+    threshold: 0.5,
+    triggers: isBreached
+      ? [
+          {
+            key: 'known_password_breach',
+            label: 'Known password breach',
+            icon: '!',
+            description,
+            matches: [`${count.toLocaleString()} breach match${count === 1 ? '' : 'es'}`],
+          },
+        ]
+      : [],
+    explanation: description,
+    is_scam: isBreached,
+    risk_level: isBreached ? 'high' : 'low',
+    verdict_title: isBreached ? 'Password exposed' : 'No known breach found',
+    verdict_summary: isBreached
+      ? 'This password appears in known breach data.'
+      : 'This password was not found in the checked breach data.',
+    analysis_mode: 'password',
+    url_details: null,
+    scan_id: '',
+    stored_scam_id: null,
+    stored_in_community: false,
+    location: null,
   };
 }
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const resultRef = useRef<HTMLDivElement | null>(null);
+  const resultRef = useRef(null);
   const { user, checkSession } = useAuthStore();
   const { activeAnalyzerTab, setActiveAnalyzerTab } = useUIStore();
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
   const [lastAnalyzedTab, setLastAnalyzedTab] = useState('text');
-  const dashboardStats = {
-    totalScans: 0,
-    totalReports: 0,
-    trustScore: 0,
-  };
-
-  useEffect(() => {
-    if (!result) return;
-
-    resultRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
-  }, [result]);
 
   const handleAnalyze = async () => {
     if (!input.trim()) return;
 
     setIsAnalyzing(true);
     setResult(null);
+    setAnalysisError(null);
     setLastAnalyzedTab(activeAnalyzerTab);
 
     try {
@@ -277,17 +301,9 @@ export default function DashboardPage() {
         });
 
         const description = cleanPasswordCheckMessage(pwnedResult);
+        const analysis = buildPasswordAnalysis(pwnedResult);
 
-        if (pwnedResult.breached) {
-          toast.warning('Password breach found', {
-            description,
-          });
-        } else {
-          toast.success('No known password breach found', {
-            description,
-          });
-        }
-
+        setResult(analysis);
         return;
       }
 
@@ -330,7 +346,9 @@ export default function DashboardPage() {
         toast.success('Analysis completed.');
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Analysis failed.');
+      const message = error instanceof Error ? error.message : 'Analysis failed.';
+      setAnalysisError(message);
+      toast.error(message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -341,6 +359,31 @@ export default function DashboardPage() {
   const recommendations = result ? buildRecommendations(result, analyzedTab) : [];
     const tone = result ? resultTone(result) : null;
   const ToneIcon = tone?.icon ?? Shield;
+  const inlineTone = analysisError
+    ? 'error'
+    : result?.is_scam || result?.risk_level === 'medium'
+    ? 'warning'
+    : result
+    ? 'success'
+    : null;
+  const InlineIcon = inlineTone === 'success' ? CheckCircle : inlineTone === 'error' ? AlertTriangle : ShieldAlert;
+  const inlineClassName =
+    inlineTone === 'success'
+      ? 'border-success/30 bg-success/10 text-success'
+      : inlineTone === 'error'
+      ? 'border-destructive/30 bg-destructive/10 text-destructive'
+      : 'border-warning/30 bg-warning/10 text-warning';
+  const inlineTitle = analysisError
+    ? 'Analysis failed'
+    : result
+    ? result.verdict_title
+    : '';
+  const inlineMessage = analysisError
+    ? analysisError
+    : result
+    ? result.verdict_summary
+    : '';
+  const inlineDetails = result?.explanation || null;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -393,6 +436,26 @@ export default function DashboardPage() {
             </button>
           ))}
         </div>
+
+        {(result || analysisError) && (
+          <div className={`mb-4 rounded-xl border p-4 ${inlineClassName}`}>
+            <div className="flex items-start gap-3">
+              <InlineIcon className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-foreground">{inlineTitle}</div>
+                <p className="mt-1 text-sm leading-6 text-foreground/85">{inlineMessage}</p>
+                {inlineDetails && (
+                  <p className="mt-2 text-sm leading-6 text-foreground/75">{inlineDetails}</p>
+                )}
+                {result?.analysis_mode === 'text' && result.is_scam && (
+                  <p className="mt-3 text-sm leading-6 text-foreground/75">
+                    This scan is private. Go to your profile if you want to control whether it is posted to the community.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeAnalyzerTab === 'text' ? (
           <Textarea
@@ -466,7 +529,11 @@ export default function DashboardPage() {
                     {result.prediction}
                   </span>
                   <span className="rounded-full border border-border/60 bg-secondary/60 px-3 py-1 text-sm text-foreground">
-                    {analyzedTab === 'url' ? 'URL analysis' : 'Message analysis'}
+                    {analyzedTab === 'url'
+                      ? 'URL analysis'
+                      : analyzedTab === 'password'
+                      ? 'Password check'
+                      : 'Message analysis'}
                   </span>
                 </div>
 
@@ -529,9 +596,13 @@ export default function DashboardPage() {
                   <div className="mt-4 w-full rounded-xl border border-border/60 bg-secondary/50 p-4 text-sm text-muted-foreground">
                     {result.is_scam ? (
                       <div className="space-y-2">
-                        <div className="font-semibold text-foreground">Private scan saved</div>
+                        <div className="font-semibold text-foreground">
+                          {analyzedTab === 'password' || analyzedTab === 'url' ? 'Visible for this session' : 'Private scan saved'}
+                        </div>
                         <div>
-                          This flagged sample was saved to your activity history. You choose whether to post it to the community.
+                          {analyzedTab === 'password' || analyzedTab === 'url'
+                            ? 'This result is shown here for review and is not posted to the community.'
+                            : 'This flagged sample was saved to your activity history. You choose whether to post it to the community.'}
                         </div>
                       </div>
                     ) : (
@@ -617,9 +688,11 @@ export default function DashboardPage() {
               </ul>
 
               {result.is_scam ? (
-                <Button variant="destructive" className="mt-5 w-full" onClick={() => navigate('/profile')}>
-                  <AlertTriangle className="h-4 w-4" /> Post from Profile
-                </Button>
+                analyzedTab === 'text' ? (
+                  <Button variant="destructive" className="mt-5 w-full" onClick={() => navigate('/profile')}>
+                    <AlertTriangle className="h-4 w-4" /> Post from Profile
+                  </Button>
+                ) : null
               ) : (
                 <Button variant="cyber-outline" className="mt-5 w-full" onClick={() => navigate('/report')}>
                   <FileText className="h-4 w-4" /> Report Manually

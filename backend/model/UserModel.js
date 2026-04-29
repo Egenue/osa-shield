@@ -79,6 +79,18 @@ export default (sequelize, DataTypes) => {
       as: "threads",
       onDelete: "CASCADE",
     });
+
+    User.hasMany(models.Setting, {
+      foreignKey: "settings_id",
+      as: "settings",
+      onDelete: "CASCADE",
+    });
+    User.hasMany(models.Otp, {
+      foreignKey: "otp_id",
+      as: "otp_login",
+      onDelete: "CASCADE",
+    });
+    
   };
 
   return User;

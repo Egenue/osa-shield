@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 # OSA Shield - Open Source Anti-Scam Platform
 
 A comprehensive, community-driven platform for detecting, reporting, and analyzing scams in real-time. Built with React.js for the frontend and Node.js/Fastify for the backend, OSA Shield empowers users to protect themselves and others from malicious actors.
+=======
+###Guide
+##  Installation & Setup
+```bash
+npm install --legacy-peer-deps
+>>>>>>> 93aa97166397119257af59aa45b918477153712f
 
 ## 🎯 Project Overview
 
+<<<<<<< HEAD
 OSA Shield is designed to be a collaborative defense system against online scams, phishing attempts, and cybercrime. Users can:
 
 - **Analyze Content**: Submit URLs, emails, and messages for real-time threat analysis
@@ -350,3 +358,35 @@ For issues, questions, or feature requests:
 **Last Updated**: April 2026
 **Version**: 1.0.0
 **Status**: Active Development
+=======
+###Run backend
+##npm run server
+
+# --- Server Configuration ---
+PORT=5000
+SESSION_SECRET=your_secure_session_secret
+CORS_ORIGINS=http://localhost:5173
+
+# --- Database Credentials ---
+# DATABASE_URL: Combine user, pass, host, and name 
+# Format: postgres://DB_USER:DB_PASSWORD@DB_HOST:5432/DB_NAME
+DATABASE_URL=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_NAME=
+
+# --- Email & Communication ---
+EMAIL_USER=
+EMAIL_PASS=
+EMAIL_SENDER_APT_KEY=
+EMAIL_API_URL=
+VERIFICATION_TTL_MINUTES=10
+
+# --- Network & Integration Links ---
+VITE_API_BASE_URL=http://localhost:5000
+CONFIRM_LINK=
+RESET_LINK=
+OSA_MODEL_API=
+WEB_RISK_API=
+>>>>>>> 93aa97166397119257af59aa45b918477153712f
